@@ -662,8 +662,8 @@ async function showPickerScreen() {
     list.innerHTML = recent.map(r => `
       <div class="recent-item">
         <div class="recent-item-header">
-          <span class="recent-folder-name">&#128193; ${esc(r.name)}</span>
-          <button class="btn-open-sm" onclick="reopenSpecific('${esc(r.name)}')">Open</button>
+          <span class="recent-folder-name">&#128193; ${esc(r.folderName)}</span>
+          <button class="btn-open-sm" onclick="reopenSpecific('${esc(r.folderName)}')">Open</button>
         </div>
       </div>`).join('');
     showPickerState('state-reopen');
@@ -762,7 +762,7 @@ async function addToRecentFolders(handle) {
   try {
     const d  = await openDB();
     const tx = d.transaction('folders','readwrite');
-    tx.objectStore('folders').put({ name:handle.name, lastOpened:Date.now(), handle });
+    tx.objectStore('folders').put({ name: currentArchiveId + '::' + handle.name, archiveId: currentArchiveId, folderName: handle.name, lastOpened: Date.now(), handle });
     await new Promise(r => tx.oncomplete = r);
     d.close();
   } catch {}
@@ -775,7 +775,10 @@ async function getRecentFolders() {
     const req = tx.objectStore('folders').getAll();
     const all = await new Promise((res,rej) => { req.onsuccess = () => res(req.result); req.onerror = rej; });
     d.close();
-    return all.sort((a,b) => b.lastOpened - a.lastOpened).slice(0, 5);
+    return all
+      .filter(r => r.archiveId === currentArchiveId)
+      .sort((a,b) => b.lastOpened - a.lastOpened)
+      .slice(0, 5);
   } catch { return []; }
 }
 
@@ -783,7 +786,7 @@ window.reopenSpecific = async function(name) {
   try {
     const d   = await openDB();
     const tx  = d.transaction('folders','readonly');
-    const req = tx.objectStore('folders').get(name);
+    const req = tx.objectStore('folders').get(currentArchiveId + '::' + name);
     const rec = await new Promise((res,rej) => { req.onsuccess = () => res(req.result); req.onerror = rej; });
     d.close();
     if (!rec?.handle) { showOpenState(); return; }
