@@ -77,6 +77,8 @@
     .archive-open-btn { font-family:system-ui,sans-serif; font-size:.82rem; font-weight:600; padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; flex-shrink:0; transition:filter .15s; }
     .archive-open-btn:hover { filter:brightness(1.08); }
     .dash-empty { text-align:center; padding:60px 32px; font-family:system-ui,sans-serif; color:var(--text-mid); line-height:1.7; }
+    .pending-badge { font-family:system-ui,sans-serif; font-size:.72rem; font-weight:700; padding:3px 9px; background:#c0693e; color:#fff; border-radius:20px; white-space:nowrap; }
+    .contrib-badge { font-family:system-ui,sans-serif; font-size:.72rem; font-weight:700; padding:1px 7px; background:#c0693e; color:#fff; border-radius:20px; margin-left:4px; vertical-align:middle; }
 
     /* ONBOARDING SCREEN */
     #screen-onboarding { min-height:calc(100vh - 68px); display:flex; align-items:center; justify-content:center; padding:32px 16px; }
@@ -655,15 +657,36 @@ async function loadDashboard() {
     return;
   }
 
-  document.getElementById('archive-list').innerHTML = archives.map(a => `
+  // Fetch pending contribution counts for all archives at once
+  const archiveIds = archives.map(a => a.id);
+  const [{ data: cols }, { data: pendingContribs }, { data: pendingUploads }] = await Promise.all([
+    db().from('mk_collections').select('id, archive_id').in('archive_id', archiveIds),
+    db().from('mk_contributions').select('collection_id').eq('status', 'pending'),
+    db().from('mk_uploads').select('collection_id')
+  ]);
+
+  // Build archive_id → pending count map
+  const colToArchive = {};
+  (cols || []).forEach(c => { colToArchive[c.id] = c.archive_id; });
+  const pendingMap = {};
+  [...(pendingContribs||[]), ...(pendingUploads||[])].forEach(row => {
+    const aid = colToArchive[row.collection_id];
+    if (aid) pendingMap[aid] = (pendingMap[aid] || 0) + 1;
+  });
+
+  document.getElementById('archive-list').innerHTML = archives.map(a => {
+    const count = pendingMap[a.id] || 0;
+    return `
     <div class="archive-card" onclick="openArchive('${esc(a.id)}','${esc(a.name)}')">
       <div class="archive-icon">&#128247;</div>
       <div class="archive-info">
         <div class="archive-name">${esc(a.name)}</div>
         <div class="archive-meta">Created ${new Date(a.created_at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}</div>
       </div>
+      ${count > 0 ? `<span class="pending-badge">&#128228; ${count} pending</span>` : ''}
       <button class="archive-open-btn" onclick="event.stopPropagation();openArchive('${esc(a.id)}','${esc(a.name)}')">Open &#8594;</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 window.showDashboard = loadDashboard;
@@ -690,7 +713,23 @@ window.openArchive = function(id, name) {
   document.getElementById('hdr-tagline').textContent = name + ' — ' + currentUser.email;
   document.getElementById('btn-archives').style.display = '';
   showPickerScreen();
+  updateContribBadge();
 };
+
+async function updateContribBadge() {
+  const { data: cols } = await db().from('mk_collections').select('id').eq('archive_id', currentArchiveId);
+  if (!cols?.length) return;
+  const colIds = cols.map(c => c.id);
+  const [{ count: c1 }, { count: c2 }] = await Promise.all([
+    db().from('mk_contributions').select('*', { count:'exact', head:true }).in('collection_id', colIds).eq('status','pending'),
+    db().from('mk_uploads').select('*', { count:'exact', head:true }).in('collection_id', colIds)
+  ]);
+  const total = (c1 || 0) + (c2 || 0);
+  const btn = document.getElementById('btn-review');
+  btn.innerHTML = total > 0
+    ? `&#128228; Contributions <span class="contrib-badge">${total}</span>`
+    : '&#128228; Contributions';
+}
 
 // ════════════════════════════════════════════════════════════
 //  SCREEN MANAGEMENT
