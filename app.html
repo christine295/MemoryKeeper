@@ -428,36 +428,95 @@
       <button class="help-close" onclick="closeHelp()">&#10005;</button>
     </div>
     <div class="help-body">
-      <h3>Getting Started</h3>
-      <p>MemoryKeeper helps you review, tag, and share your family photos. Your photos stay on your device — only resized previews are uploaded when you share.</p>
+
+      <h3>What is MemoryKeeper?</h3>
+      <p>MemoryKeeper is a private family photo tool. You review and tag photos stored on your own computer, then share curated collections with family members so they can add names, dates, and memories. Your original photos never leave your device — only small resized previews are uploaded when you share.</p>
+
       <h3>Archives</h3>
-      <p>Each archive is a named collection (e.g. "Grandma's Albums"). You can have multiple archives for different branches of your family.</p>
+      <p>An <strong>archive</strong> is a top-level workspace for one branch or theme of your family's photos — for example "Grandkids", "Vacations", or "Grandma &amp; Grandpa". You can have as many archives as you like. Each archive remembers its own folders separately, so opening different archives won't mix up your recent folder lists.</p>
+      <p>To create a new archive, click <strong>Archives</strong> in the header, then <strong>+ New Archive</strong>.</p>
+
+      <h3>Opening a Photos Folder</h3>
+      <p>After selecting an archive, click <strong>Open Photos Folder</strong> and choose a folder on your computer. The app loads every image file in that folder. On Chrome and Edge, your folder choice is remembered so you can re-open it quickly next time. On Firefox and Safari, you'll need to pick the folder each visit.</p>
+      <p>Only the top level of the folder is loaded — subfolders are not scanned automatically. If you have photos organised into subfolders, open each subfolder separately.</p>
+
+      <h3>Review Modes</h3>
+      <p>Use the <strong>Mode</strong> dropdown to control which photos you see:</p>
+      <ul>
+        <li><strong>Random Unreviewed</strong> — shows photos you haven't tagged yet, in a random order. This is the main working mode.</li>
+        <li><strong>Favorites</strong> — all photos marked as a Favorite.</li>
+        <li><strong>Best Shots</strong> — all photos marked as Best Shot (print-quality picks).</li>
+        <li><strong>Hidden</strong> — photos you've hidden (they exist but won't appear in shared collections).</li>
+        <li><strong>All Reviewed</strong> — every photo you've touched, in filename order.</li>
+        <li><strong>By Person / Tag / Holiday / Year</strong> — filter reviewed photos by a specific value. Type in the filter box that appears.</li>
+      </ul>
+      <p>Click any stat at the top of the screen (Remaining, Reviewed, Favorites, etc.) to jump straight to that mode.</p>
+
       <h3>Review Actions</h3>
       <ul>
-        <li><strong>&#9670; Best Shot</strong> — print-quality photo worth preserving</li>
-        <li><strong>&#9733; Favorite</strong> — personal favourite</li>
-        <li><strong>&#9675; Hide</strong> — keeps but hides from share view</li>
-        <li><strong>&#10005; Delete (App Only)</strong> — removes from this app; file stays on disk</li>
-        <li><strong>Save &amp; Next</strong> — saves tags/notes and moves to next photo</li>
+        <li><strong>&#9670; Best Shot</strong> — marks a photo as print-quality or especially important. Use this for the very best images worth framing or printing.</li>
+        <li><strong>&#9733; Favorite</strong> — marks a personal favourite. A photo can be both a Best Shot and a Favorite.</li>
+        <li><strong>&#9675; Hide / Unhide</strong> — keeps the photo in the app but excludes it from shared collections. Useful for duplicates or photos you don't want family to see.</li>
+        <li><strong>&#10005; Delete (App Only)</strong> — removes the photo from MemoryKeeper's view. The file is <em>not</em> deleted from your computer. You can re-open the folder to see it again.</li>
+        <li><strong>&#8592; Back / &#8594; Next</strong> — move through photos without saving changes.</li>
+        <li><strong>Save &amp; Next</strong> — saves all tags and notes for the current photo, then moves to the next one. Any action button (Favorite, Best Shot, Hide) takes effect immediately, but the text fields (People, Date, Location, etc.) are only saved when you click Save &amp; Next.</li>
       </ul>
-      <h3>Sharing</h3>
-      <p>Click <strong>Share</strong> to upload resized previews of your photos and generate a link family members can open to add memories and names. Contributors don't need an account.</p>
+
+      <h3>Tagging Photos</h3>
+      <p>Each photo has six fields you can fill in:</p>
+      <ul>
+        <li><strong>People in photo</strong> — names of the people shown, separated by commas (e.g. <em>Grandma Rose, Uncle Mike, Christine</em>).</li>
+        <li><strong>Approximate date</strong> — a rough date or year (e.g. <em>Summer 1994</em>, <em>Christmas 1988</em>). If the photo is a JPEG with an EXIF date, this field fills in automatically.</li>
+        <li><strong>Location</strong> — where the photo was taken (e.g. <em>Grandma's house, Chicago</em>).</li>
+        <li><strong>Holiday / Event</strong> — the occasion (e.g. <em>Thanksgiving 1997</em>, <em>Family Reunion</em>).</li>
+        <li><strong>Tags</strong> — freeform keywords, comma-separated (e.g. <em>outdoor, funny, rare, swimming</em>).</li>
+        <li><strong>Memory / story / note</strong> — a longer written memory or story about the photo.</li>
+      </ul>
+
+      <h3>Gallery View &amp; Bulk Actions</h3>
+      <p>Click <strong>Gallery</strong> (or press <strong>G</strong>) to switch to a grid view of all photos in the current mode. In gallery view you can select multiple photos by clicking their checkboxes, then apply a bulk action — Favorite, Best Shot, Hide, or Mark Kept — to all of them at once. Click a photo to open it in single view.</p>
+
+      <h3>Moving Files to Subfolders</h3>
+      <p>In single view, there is a <strong>Move to subfolder</strong> field at the bottom of the card (Chrome/Edge only). Type a subfolder name and click Move — the file is physically moved into that subfolder inside your photos folder. This is useful for organising photos as you review them (e.g. moving them into "Keep", "Print", or year folders).</p>
+
+      <h3>Sharing a Collection</h3>
+      <p>Click <strong>Share</strong> in the header to create a shareable link for your family. The app will:</p>
+      <ul>
+        <li>Upload small resized previews (max 1200px) of all non-hidden photos to secure cloud storage.</li>
+        <li>Include all the tags and notes you've added — people, date, location, and your memory notes.</li>
+        <li>Generate a unique link that anyone can open without needing an account.</li>
+      </ul>
+      <p>You can give the collection a title and optional description, and choose whether family members can download the preview images. You can create multiple share links from the same folder (e.g. one for each branch of the family).</p>
+
+      <h3>What Family Members See</h3>
+      <p>When a family member opens your share link, they see a gallery of the photos with the information you've already filled in. They can click any photo to open a form where they can add their own memories, suggest names, dates, locations, and tags — or upload their own photos to add to the collection. They don't need an account to do any of this.</p>
+
       <h3>Reviewing Contributions</h3>
-      <p>Click <strong>Contributions</strong> to review memory submissions and uploaded photos from family members. Accept a memory to merge it into your local metadata.</p>
+      <p>Click <strong>Contributions</strong> in the header to review what family members have submitted. There are two sections:</p>
+      <ul>
+        <li><strong>Memory Submissions</strong> — text contributions (names, dates, memories) linked to specific photos. Click <strong>Accept</strong> to merge their suggestions into your local tags and notes, or <strong>Reject</strong> to discard them.</li>
+        <li><strong>Uploaded Photos</strong> — photos that family members have uploaded. You can save them directly into your open folder (Chrome/Edge only), download them, or dismiss them.</li>
+      </ul>
+      <p>Accepted contributions update your local metadata immediately and are saved to your <code>mk-metadata.json</code> file.</p>
+
+      <h3>How Your Data is Saved</h3>
+      <p>All tags and notes are stored in a file called <code>mk-metadata.json</code> inside your photos folder (Chrome and Edge only). This file travels with your photos — if you move or back up the folder, your metadata comes with it. On Firefox and Safari, metadata is stored in your browser and can be exported using the <strong>Export</strong> button in the header.</p>
+      <p>Your original photo files are never uploaded or modified. Only the metadata JSON and small preview images (when you share) leave your device.</p>
+
       <h3>Keyboard Shortcuts</h3>
       <ul>
-        <li><strong>Arrow keys / Space</strong> — skip forward / backward</li>
+        <li><strong>&#8592; / &#8594; or Space</strong> — skip back / forward</li>
         <li><strong>S</strong> — Save &amp; Next</li>
         <li><strong>F</strong> — toggle Favorite</li>
         <li><strong>B</strong> — toggle Best Shot</li>
         <li><strong>H</strong> — toggle Hide</li>
-        <li><strong>G</strong> — toggle Gallery view</li>
-        <li><strong>Z</strong> — zoom current photo</li>
-        <li><strong>?</strong> — this help panel</li>
-        <li><strong>Esc</strong> — close any panel</li>
+        <li><strong>G</strong> — toggle Gallery / Single view</li>
+        <li><strong>Z</strong> — zoom current photo fullscreen</li>
+        <li><strong>?</strong> — open this help panel</li>
+        <li><strong>Esc</strong> — close any open panel</li>
       </ul>
-      <h3>Data Storage</h3>
-      <p>On Chrome/Edge: tags and notes are saved as <code>mk-metadata.json</code> directly in your photos folder — the file travels with your photos. On Firefox/Safari: data is kept in your browser's localStorage and can be exported as JSON.</p>
+      <p>Shortcuts are disabled when your cursor is inside a text field.</p>
+
     </div>
   </div>
 </div>
