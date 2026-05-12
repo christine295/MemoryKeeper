@@ -583,7 +583,7 @@ async function loadDashboard() {
   document.getElementById('btn-export').style.display   = 'none';
 
   const { data: archives, error } = await db().from('archives')
-    .select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+    .select('*').eq('owner_id', currentUser.id).order('created_at', { ascending: false });
 
   if (error) {
     document.getElementById('archive-list').innerHTML =
@@ -620,7 +620,7 @@ window.doCreateArchive = async function() {
   const btn = document.getElementById('btn-create-archive');
   btn.disabled = true;
   const { data, error } = await db().from('archives')
-    .insert({ user_id: currentUser.id, name }).select().single();
+    .insert({ owner_id: currentUser.id, name }).select().single();
   if (error) { alert('Failed to create archive: ' + error.message); btn.disabled = false; return; }
   openArchive(data.id, data.name);
 };
