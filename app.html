@@ -653,8 +653,8 @@ function showOpenState() { showPickerState('state-open'); }
 async function showPickerScreen() {
   showScreen('screen-picker');
   showPickerState('state-checking');
-  document.getElementById('picker-archive-chip').textContent  = '&#128247; ' + currentArchiveName;
-  document.getElementById('picker-archive-chip2').textContent = '&#128247; ' + currentArchiveName;
+  document.getElementById('picker-archive-chip').innerHTML  = '&#128247; ' + esc(currentArchiveName);
+  document.getElementById('picker-archive-chip2').innerHTML = '&#128247; ' + esc(currentArchiveName);
 
   const recent = await getRecentFolders();
   if (recent.length) {
