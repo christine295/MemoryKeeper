@@ -625,13 +625,13 @@ window.doCreateArchive = async function() {
   openArchive(data.id, data.name);
 };
 
-function openArchive(id, name) {
+window.openArchive = function(id, name) {
   currentArchiveId   = id;
   currentArchiveName = name;
   document.getElementById('hdr-tagline').textContent = name + ' — ' + currentUser.email;
   document.getElementById('btn-archives').style.display = '';
   showPickerScreen();
-}
+};
 
 // ════════════════════════════════════════════════════════════
 //  SCREEN MANAGEMENT
@@ -648,7 +648,7 @@ function showPickerState(id) {
   });
 }
 
-function showOpenState() { showPickerState('state-open'); }
+window.showOpenState = function() { showPickerState('state-open'); };
 
 async function showPickerScreen() {
   showScreen('screen-picker');
@@ -931,11 +931,11 @@ function updateCounter() {
     : '';
 }
 
-function switchToMode(m) {
+window.switchToMode = function(m) {
   document.getElementById('mode-select').value = m;
   state.mode = m;
-  onModeChange();
-}
+  window.onModeChange();
+};
 
 window.onModeChange = function() {
   state.mode   = document.getElementById('mode-select').value;
