@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemoryKeeper — Sign In</title>
+  <style>
+    :root {
+      --bg:#faf6f0; --card:#ffffff; --header:#4e3527; --accent:#c0693e;
+      --text:#3a2718; --text-mid:#7a6050; --text-light:#a89080;
+      --border:#e6dad0; --radius:14px; --radius-sm:8px;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:Georgia,'Times New Roman',serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+
+    header { background:var(--header); color:#f4ebe0; padding:14px 24px 13px; border-bottom:3px solid var(--accent); }
+    .header-inner { max-width:480px; margin:0 auto; display:flex; align-items:center; gap:14px; }
+    .header-icon { font-size:2rem; line-height:1; opacity:.85; }
+    header h1 { font-size:1.35rem; font-weight:normal; }
+    .tagline { font-family:system-ui,sans-serif; font-size:.76rem; opacity:.6; margin-top:2px; }
+
+    .auth-wrap { flex:1; display:flex; align-items:center; justify-content:center; padding:32px 16px; }
+    .auth-card { background:var(--card); border-radius:var(--radius); box-shadow:0 4px 32px rgba(60,40,20,.12); width:100%; max-width:420px; overflow:hidden; }
+    .auth-tabs { display:flex; border-bottom:2px solid var(--border); }
+    .auth-tab { flex:1; font-family:system-ui,sans-serif; font-size:.88rem; font-weight:600; padding:14px; text-align:center; cursor:pointer; color:var(--text-light); border:none; background:none; transition:color .15s,border-bottom .15s; border-bottom:3px solid transparent; margin-bottom:-2px; }
+    .auth-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .auth-tab:hover:not(.active) { color:var(--text-mid); }
+
+    .auth-body { padding:28px 28px 24px; }
+    .auth-field { display:flex; flex-direction:column; gap:5px; margin-bottom:16px; }
+    .auth-field label { font-family:system-ui,sans-serif; font-size:.72rem; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.07em; }
+    .auth-field input { font-family:Georgia,serif; font-size:.95rem; padding:9px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); outline:none; transition:border-color .15s; }
+    .auth-field input:focus { border-color:var(--accent); background:#fff; }
+
+    .auth-submit { width:100%; font-family:system-ui,sans-serif; font-size:.95rem; font-weight:700; padding:11px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; transition:filter .15s; margin-top:6px; }
+    .auth-submit:hover { filter:brightness(1.08); }
+    .auth-submit:disabled { opacity:.5; cursor:not-allowed; filter:none; }
+
+    .auth-msg { font-family:system-ui,sans-serif; font-size:.83rem; text-align:center; min-height:20px; margin-top:12px; }
+    .auth-msg.err { color:#9e3c3c; }
+    .auth-msg.ok { color:#3a7a5a; }
+
+    .auth-note { font-family:system-ui,sans-serif; font-size:.78rem; color:var(--text-light); text-align:center; margin-top:20px; line-height:1.6; }
+
+    .signup-extra { display:none; }
+    .signup-extra.visible { display:block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-icon">&#128247;</div>
+    <div>
+      <h1>MemoryKeeper</h1>
+      <div class="tagline">Preserve your family's memories</div>
+    </div>
+  </div>
+</header>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-signin" onclick="showTab('signin')">Sign In</button>
+      <button class="auth-tab" id="tab-signup" onclick="showTab('signup')">Create Account</button>
+    </div>
+    <div class="auth-body">
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="inp-email" autocomplete="email" placeholder="you@example.com" />
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="inp-password" autocomplete="current-password" placeholder="••••••••" />
+      </div>
+      <div class="auth-field signup-extra" id="field-confirm">
+        <label>Confirm Password</label>
+        <input type="password" id="inp-confirm" autocomplete="new-password" placeholder="••••••••" />
+      </div>
+      <button class="auth-submit" id="btn-auth" onclick="doAuth()">Sign In</button>
+      <div class="auth-msg" id="auth-msg"></div>
+      <p class="auth-note" id="auth-note">Your photos stay on your device — only metadata is stored securely online.</p>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const SUPA_URL = 'https://ebungmhgfyawhnnqykmd.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVidW5nbWhnZnlhd2hubnF5a21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0OTQ2OTgsImV4cCI6MjA5NDA3MDY5OH0.P6sKZfGtSrpFWJTNkaRhb8Fwb_7uUP_PVqq5ww8WhFU';
+  const sb = createClient(SUPA_URL, SUPA_KEY);
+
+  // If a share link landed here, bounce directly to share.html
+  const params = new URLSearchParams(location.search);
+  const shareToken = params.get('share');
+  if (shareToken) {
+    location.replace('share.html?share=' + encodeURIComponent(shareToken));
+  }
+
+  // If already signed in, go straight to the app
+  sb.auth.getSession().then(({ data }) => {
+    if (data.session) location.replace('app.html');
+  });
+
+  let currentTab = 'signin';
+
+  window.showTab = function(tab) {
+    currentTab = tab;
+    document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
+    document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+    document.getElementById('field-confirm').classList.toggle('visible', tab === 'signup');
+    document.getElementById('btn-auth').textContent = tab === 'signin' ? 'Sign In' : 'Create Account';
+    document.getElementById('inp-password').autocomplete = tab === 'signin' ? 'current-password' : 'new-password';
+    setMsg('', '');
+  };
+
+  window.doAuth = async function() {
+    const email = document.getElementById('inp-email').value.trim();
+    const password = document.getElementById('inp-password').value;
+    const confirm = document.getElementById('inp-confirm').value;
+    const btn = document.getElementById('btn-auth');
+
+    if (!email || !password) { setMsg('Please enter your email and password.', 'err'); return; }
+    if (currentTab === 'signup' && password !== confirm) { setMsg('Passwords do not match.', 'err'); return; }
+    if (currentTab === 'signup' && password.length < 6) { setMsg('Password must be at least 6 characters.', 'err'); return; }
+
+    btn.disabled = true;
+    setMsg('', '');
+
+    if (currentTab === 'signin') {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) { setMsg(error.message, 'err'); btn.disabled = false; return; }
+      location.replace('app.html');
+    } else {
+      const { error } = await sb.auth.signUp({ email, password });
+      if (error) { setMsg(error.message, 'err'); btn.disabled = false; return; }
+      setMsg('Account created! Signing you in…', 'ok');
+      const { error: e2 } = await sb.auth.signInWithPassword({ email, password });
+      if (e2) { setMsg('Account created — please sign in.', 'ok'); showTab('signin'); btn.disabled = false; return; }
+      location.replace('app.html');
+    }
+  };
+
+  function setMsg(text, cls) {
+    const el = document.getElementById('auth-msg');
+    el.textContent = text;
+    el.className = 'auth-msg' + (cls ? ' ' + cls : '');
+  }
+
+  // Allow Enter key to submit
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.doAuth();
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MemoryKeeper</title>
+  <style>
+    :root {
+      --bg:#faf6f0; --card:#ffffff; --header:#4e3527; --header-light:#5e4535;
+      --accent:#c0693e; --text:#3a2718; --text-mid:#7a6050; --text-light:#a89080;
+      --border:#e6dad0; --shadow:0 2px 18px rgba(60,40,20,.10);
+      --radius:14px; --radius-sm:8px;
+      --bestshot:#7244b0; --fav:#b87e10; --hide:#5e7a98; --del:#9e3c3c; --move:#3a7a6a;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:Georgia,'Times New Roman',serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* HEADER */
+    header { background:var(--header); color:#f4ebe0; padding:14px 24px 13px; border-bottom:3px solid var(--accent); }
+    .header-inner { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:10px; }
+    .header-icon { font-size:2rem; line-height:1; opacity:.85; }
+    .header-text { flex:1; }
+    header h1 { font-size:1.35rem; font-weight:normal; }
+    .tagline { font-family:system-ui,sans-serif; font-size:.76rem; opacity:.6; margin-top:2px; }
+    .hdr-btn { font-family:system-ui,sans-serif; font-size:.78rem; font-weight:600; padding:6px 13px; background:rgba(255,255,255,.12); color:#f4ebe0; border:1px solid rgba(255,255,255,.2); border-radius:var(--radius-sm); cursor:pointer; white-space:nowrap; transition:background .15s; }
+    .hdr-btn:hover { background:rgba(255,255,255,.22); }
+
+    /* STATS BAR */
+    .stats-bar { background:var(--header-light); border-bottom:1px solid rgba(0,0,0,.15); }
+    .stats-inner { max-width:900px; margin:0 auto; display:flex; flex-wrap:wrap; }
+    .stat { display:flex; align-items:center; gap:8px; padding:8px 20px; border-right:1px solid rgba(255,255,255,.08); font-family:system-ui,sans-serif; font-size:.78rem; color:rgba(244,235,224,.7); cursor:pointer; transition:background .15s; user-select:none; }
+    .stat:hover { background:rgba(255,255,255,.1); }
+    .stat:last-child { border-right:none; }
+    .stat-value { font-size:1.1rem; font-weight:700; color:#f4ebe0; }
+
+    /* CONTROLS BAR */
+    .controls-bar { background:#fff; border-bottom:1px solid var(--border); padding:10px 24px; position:sticky; top:0; z-index:10; box-shadow:0 2px 6px rgba(60,40,20,.05); }
+    .controls-inner { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .ctrl-label { font-family:system-ui,sans-serif; font-size:.82rem; color:var(--text-mid); white-space:nowrap; }
+    select, .ctrl-input { font-family:system-ui,sans-serif; font-size:.88rem; padding:6px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); outline:none; transition:border-color .15s; }
+    select:focus, .ctrl-input:focus { border-color:var(--accent); }
+    .controls-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+    .photo-counter { font-family:system-ui,sans-serif; font-size:.78rem; color:var(--text-light); white-space:nowrap; }
+    .view-btn { font-family:system-ui,sans-serif; font-size:.8rem; font-weight:600; padding:5px 11px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text-mid); cursor:pointer; transition:background .12s,color .12s,border-color .12s; }
+    .view-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .view-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+    /* GALLERY */
+    .gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:10px; }
+    .gallery-item { position:relative; aspect-ratio:1; border-radius:var(--radius-sm); overflow:hidden; cursor:pointer; background:#1a100a; border:2px solid transparent; transition:border-color .15s,transform .12s; }
+    .gallery-item:hover { border-color:var(--accent); transform:scale(1.02); }
+    .gallery-item img { width:100%; height:100%; object-fit:cover; display:block; }
+    .gallery-item .g-badge { position:absolute; top:5px; right:5px; padding:2px 7px; border-radius:12px; font-family:system-ui,sans-serif; font-size:.62rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+    .gallery-item .g-name { position:absolute; bottom:0; left:0; right:0; padding:18px 6px 5px; background:linear-gradient(transparent,rgba(0,0,0,.65)); font-family:system-ui,sans-serif; font-size:.7rem; color:rgba(255,255,255,.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .gallery-missing { width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#5a3820; font-size:1.8rem; opacity:.3; }
+    .gallery-item.selected { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent); }
+    .g-checkbox { position:absolute; top:6px; left:6px; width:22px; height:22px; border-radius:50%; border:2px solid rgba(255,255,255,.75); background:rgba(0,0,0,.38); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:.75rem; color:transparent; transition:background .12s,border-color .12s,color .12s; z-index:2; line-height:1; padding:0; }
+    .g-checkbox:hover { background:rgba(192,105,62,.7); border-color:#fff; }
+    .gallery-item.selected .g-checkbox { background:var(--accent); border-color:#fff; color:#fff; }
+
+    /* MAIN */
+    main { max-width:900px; margin:24px auto 0; padding:0 16px 56px; }
+
+    /* DASHBOARD SCREEN */
+    #screen-dashboard { min-height:calc(100vh - 68px); padding:40px 16px 56px; max-width:700px; margin:0 auto; }
+    .dash-hd { display:flex; align-items:center; gap:14px; margin-bottom:28px; }
+    .dash-hd h2 { font-size:1.4rem; font-weight:normal; flex:1; }
+    .btn-new-archive { font-family:system-ui,sans-serif; font-size:.9rem; font-weight:700; padding:10px 22px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; transition:filter .15s; }
+    .btn-new-archive:hover { filter:brightness(1.08); }
+    .archive-list { display:flex; flex-direction:column; gap:12px; }
+    .archive-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:18px 20px; display:flex; align-items:center; gap:16px; cursor:pointer; transition:border-color .15s,box-shadow .15s; }
+    .archive-card:hover { border-color:var(--accent); box-shadow:0 2px 12px rgba(192,105,62,.15); }
+    .archive-icon { font-size:2rem; opacity:.7; flex-shrink:0; }
+    .archive-info { flex:1; min-width:0; }
+    .archive-name { font-size:1.05rem; margin-bottom:4px; }
+    .archive-meta { font-family:system-ui,sans-serif; font-size:.78rem; color:var(--text-light); }
+    .archive-open-btn { font-family:system-ui,sans-serif; font-size:.82rem; font-weight:600; padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; flex-shrink:0; transition:filter .15s; }
+    .archive-open-btn:hover { filter:brightness(1.08); }
+    .dash-empty { text-align:center; padding:60px 32px; font-family:system-ui,sans-serif; color:var(--text-mid); line-height:1.7; }
+
+    /* ONBOARDING SCREEN */
+    #screen-onboarding { min-height:calc(100vh - 68px); display:flex; align-items:center; justify-content:center; padding:32px 16px; }
+    .onboard-card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--border); padding:48px 44px; text-align:center; max-width:460px; width:100%; }
+    .onboard-icon { font-size:3.5rem; display:block; margin-bottom:18px; opacity:.75; }
+    .onboard-card h2 { font-size:1.35rem; font-weight:normal; margin-bottom:10px; }
+    .onboard-card p { font-family:system-ui,sans-serif; font-size:.88rem; color:var(--text-mid); line-height:1.7; margin-bottom:28px; }
+    .onboard-field { text-align:left; margin-bottom:20px; }
+    .onboard-field label { font-family:system-ui,sans-serif; font-size:.72rem; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.07em; display:block; margin-bottom:6px; }
+    .onboard-field input { font-family:Georgia,serif; font-size:1rem; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); outline:none; width:100%; transition:border-color .15s; }
+    .onboard-field input:focus { border-color:var(--accent); background:#fff; }
+    .btn-create-archive { font-family:system-ui,sans-serif; font-size:.98rem; font-weight:700; padding:12px 28px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; transition:filter .15s; }
+    .btn-create-archive:hover { filter:brightness(1.08); }
+    .btn-create-archive:disabled { opacity:.5; cursor:not-allowed; filter:none; }
+
+    /* PICKER SCREEN */
+    #screen-picker { min-height:calc(100vh - 68px); display:flex; align-items:center; justify-content:center; padding:32px 16px; }
+    .picker-card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--border); padding:48px 44px; text-align:center; max-width:460px; width:100%; }
+    .picker-big-icon { font-size:3.5rem; display:block; margin-bottom:18px; opacity:.7; }
+    .picker-card h2 { font-size:1.3rem; font-weight:normal; margin-bottom:10px; }
+    .picker-card p { font-family:system-ui,sans-serif; font-size:.86rem; color:var(--text-mid); line-height:1.7; margin-bottom:28px; }
+    .btn-open { display:inline-flex; align-items:center; gap:9px; font-family:system-ui,sans-serif; font-size:.98rem; font-weight:600; padding:13px 30px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; transition:filter .15s,transform .1s; }
+    .btn-open:hover { filter:brightness(1.1); }
+    .btn-open:active { transform:scale(.97); }
+    .picker-divider { margin:22px 0; border:none; border-top:1px solid var(--border); }
+    .reopen-label { font-family:system-ui,sans-serif; font-size:.78rem; color:var(--text-light); text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:8px; }
+    .picker-hint { font-family:system-ui,sans-serif; font-size:.73rem; color:var(--text-light); margin-top:22px; line-height:1.6; }
+    .recent-list { width:100%; display:flex; flex-direction:column; gap:8px; margin:16px 0 6px; text-align:left; }
+    .recent-item { display:flex; flex-direction:column; gap:5px; padding:11px 14px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); }
+    .recent-item-header { display:flex; align-items:center; gap:10px; }
+    .recent-folder-name { flex:1; font-family:'Courier New',monospace; font-size:.88rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .btn-open-sm { font-family:system-ui,sans-serif; font-size:.78rem; font-weight:600; padding:6px 13px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; white-space:nowrap; transition:filter .15s; flex-shrink:0; }
+    .btn-open-sm:hover { filter:brightness(1.1); }
+    .btn-link { font-family:system-ui,sans-serif; font-size:.82rem; color:var(--text-light); background:none; border:none; cursor:pointer; text-decoration:underline; padding:0; }
+    .btn-link:hover { color:var(--accent); }
+    .picker-archive-label { font-family:system-ui,sans-serif; font-size:.82rem; color:var(--text-mid); background:var(--bg); border:1px solid var(--border); border-radius:20px; padding:4px 14px; display:inline-block; margin-bottom:20px; }
+
+    /* PHOTO CARD */
+    .photo-card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--border); overflow:hidden; }
+    .photo-frame { width:100%; background:#1a100a; min-height:260px; max-height:560px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; box-shadow:inset 0 0 40px rgba(0,0,0,.35); }
+    .photo-frame img { max-width:100%; max-height:560px; object-fit:contain; display:block; }
+    .photo-missing { display:flex; flex-direction:column; align-items:center; gap:14px; padding:52px 32px; text-align:center; color:#7a5c40; }
+    .photo-missing p { font-family:system-ui,sans-serif; font-size:.82rem; color:#8a6848; line-height:1.7; }
+    .badge { position:absolute; top:10px; right:10px; padding:3px 10px; border-radius:14px; font-family:system-ui,sans-serif; font-size:.65rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+    .badge-favorite  { background:rgba(184,126,16,.85); color:#fff; }
+    .badge-bestshot  { background:rgba(114,68,176,.85); color:#fff; }
+    .badge-kept      { background:rgba(50,100,50,.75);  color:#fff; }
+    .badge-hidden    { background:rgba(94,122,152,.85); color:#fff; }
+    .badge-unreviewed { background:rgba(0,0,0,.45); color:rgba(255,255,255,.8); }
+
+    /* ACTIONS */
+    .actions { display:flex; flex-wrap:wrap; gap:8px; padding:16px 20px; background:#fff; border-bottom:1px solid var(--border); }
+    .btn { font-family:system-ui,sans-serif; font-size:.82rem; font-weight:600; padding:8px 14px; border-radius:var(--radius-sm); border:none; cursor:pointer; transition:filter .12s,transform .08s; }
+    .btn:hover { filter:brightness(1.1); }
+    .btn:active { transform:scale(.96); }
+    .btn-bestshot { background:var(--bestshot); color:#fff; }
+    .btn-fav      { background:var(--fav);      color:#fff; }
+    .btn-hide     { background:var(--hide);     color:#fff; }
+    .btn-del      { background:var(--del);      color:#fff; }
+    .btn-skip     { background:var(--bg); color:var(--text-mid); border:1px solid var(--border); }
+    .btn-skip:hover { border-color:var(--accent); color:var(--accent); }
+    .btn-save     { background:var(--accent); color:#fff; }
+    .btn-move     { background:var(--move);   color:#fff; }
+    .btn-on { box-shadow:inset 0 0 0 2px rgba(255,255,255,.6); }
+
+    /* META GRID */
+    .meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px 20px; padding:20px; background:var(--bg); }
+    .field { display:flex; flex-direction:column; gap:5px; }
+    .field.span2 { grid-column:1/-1; }
+    .field label { font-family:system-ui,sans-serif; font-size:.7rem; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.07em; }
+    .field input, .field textarea { font-family:Georgia,serif; font-size:.9rem; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:#fff; color:var(--text); outline:none; transition:border-color .15s; }
+    .field input:focus, .field textarea:focus { border-color:var(--accent); }
+    .field textarea { min-height:80px; resize:vertical; line-height:1.55; }
+    .save-row { display:flex; align-items:center; gap:14px; padding:14px 20px; border-top:1px solid var(--border); }
+    .saved-flash { font-family:system-ui,sans-serif; font-size:.82rem; color:var(--move); opacity:0; transition:opacity .3s; }
+    .saved-flash.show { opacity:1; }
+    .move-row { display:flex; align-items:center; gap:10px; padding:10px 20px 16px; flex-wrap:wrap; }
+
+    /* EMPTY STATE */
+    .empty-state { text-align:center; padding:80px 32px; }
+    .empty-icon { font-size:3rem; opacity:.3; margin-bottom:18px; }
+    .empty-state h2 { font-size:1.2rem; font-weight:normal; margin-bottom:10px; color:var(--text-mid); }
+    .empty-state p { font-family:system-ui,sans-serif; font-size:.86rem; color:var(--text-light); line-height:1.7; }
+
+    /* BULK BAR */
+    #bulk-bar { display:none; position:sticky; bottom:0; background:var(--header); border-top:2px solid var(--accent); z-index:20; padding:10px 20px; }
+    .bulk-inner { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .bulk-count { font-family:system-ui,sans-serif; font-size:.85rem; font-weight:700; color:#f4ebe0; white-space:nowrap; }
+    .bulk-btn { font-family:system-ui,sans-serif; font-size:.8rem; font-weight:600; padding:6px 14px; border:1px solid rgba(255,255,255,.25); border-radius:var(--radius-sm); background:rgba(255,255,255,.12); color:#f4ebe0; cursor:pointer; white-space:nowrap; transition:background .12s; }
+    .bulk-btn:hover { background:rgba(255,255,255,.22); }
+    .bulk-clear { margin-left:auto; border-color:transparent; opacity:.65; }
+    .bulk-clear:hover { opacity:1; background:rgba(255,255,255,.1); }
+
+    /* KB HINTS */
+    .kb-hints { display:flex; flex-wrap:wrap; justify-content:center; gap:16px; padding:6px 20px; font-family:system-ui,sans-serif; font-size:.67rem; color:var(--text-light); background:#fdf9f6; border-top:1px solid var(--border); user-select:none; }
+    .kb-hints span { white-space:nowrap; }
+    .kb-key { display:inline-block; font-family:'Courier New',monospace; font-size:.63rem; background:var(--border); color:var(--text-mid); padding:1px 5px; border-radius:3px; border-bottom:1px solid #c8b8ac; }
+
+    /* ZOOM OVERLAY */
+    #zoom-overlay { position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:2000; display:none; align-items:center; justify-content:center; cursor:zoom-out; }
+    #zoom-overlay.open { display:flex; }
+    #zoom-img { max-width:95vw; max-height:95vh; object-fit:contain; border-radius:4px; }
+
+    /* HELP OVERLAY */
+    #help-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1500; display:none; align-items:flex-start; justify-content:center; padding:24px 16px; overflow-y:auto; }
+    #help-overlay.open { display:flex; }
+    .help-modal { background:var(--card); border-radius:var(--radius); box-shadow:0 8px 60px rgba(0,0,0,.45); width:100%; max-width:600px; overflow:hidden; flex-shrink:0; }
+    .help-hd { display:flex; align-items:center; padding:15px 20px; background:var(--header); color:#f4ebe0; border-bottom:3px solid var(--accent); }
+    .help-hd h2 { font-size:1.05rem; font-weight:normal; flex:1; }
+    .help-close { background:none; border:none; color:#f4ebe0; font-size:1.3rem; cursor:pointer; padding:0 4px; opacity:.7; }
+    .help-close:hover { opacity:1; }
+    .help-body { padding:22px 24px 28px; font-family:system-ui,sans-serif; font-size:.88rem; line-height:1.7; color:var(--text); }
+    .help-body h3 { font-size:.9rem; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.05em; margin:20px 0 8px; }
+    .help-body h3:first-child { margin-top:0; }
+    .help-body p, .help-body ul { margin-bottom:10px; }
+    .help-body ul { padding-left:20px; }
+    .help-body li { margin-bottom:4px; }
+
+    /* SHARE MODAL */
+    #share-overlay { position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:1100; display:none; align-items:center; justify-content:center; padding:20px; }
+    #share-overlay.open { display:flex; }
+    .share-modal { background:var(--card); border-radius:var(--radius); box-shadow:0 8px 60px rgba(0,0,0,.45); width:100%; max-width:480px; overflow:hidden; }
+    .share-modal-hd { display:flex; align-items:center; padding:15px 20px; background:var(--header); color:#f4ebe0; border-bottom:3px solid var(--accent); }
+    .share-modal-hd h2 { font-size:1.05rem; font-weight:normal; flex:1; }
+    .share-body { padding:20px 22px 22px; font-family:system-ui,sans-serif; }
+    .share-field { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+    .share-field label { font-size:.7rem; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.07em; }
+    .share-field input, .share-field textarea { font-family:Georgia,serif; font-size:.9rem; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); outline:none; width:100%; transition:border-color .15s; }
+    .share-field input:focus, .share-field textarea:focus { border-color:var(--accent); background:#fff; }
+    .share-field textarea { min-height:60px; resize:vertical; }
+    .share-toggle { display:flex; align-items:center; gap:10px; margin-bottom:14px; font-size:.88rem; color:var(--text); }
+    .share-count-note { font-size:.82rem; color:var(--text-mid); background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; margin-bottom:16px; }
+    .share-prog-wrap { margin:10px 0 4px; display:none; }
+    .share-prog-bar { width:100%; height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:5px; }
+    .share-prog-fill { height:100%; background:var(--accent); border-radius:3px; transition:width .2s; width:0%; }
+    .share-prog-text { font-size:.78rem; color:var(--text-mid); text-align:center; }
+    .share-result { display:none; }
+    .share-link-row { display:flex; gap:8px; margin-top:12px; }
+    .share-link-inp { flex:1; font-family:'Courier New',monospace; font-size:.76rem; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); outline:none; }
+    .share-copy-btn { font-family:system-ui,sans-serif; font-size:.82rem; font-weight:600; padding:8px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; white-space:nowrap; transition:filter .15s; }
+    .share-copy-btn:hover { filter:brightness(1.1); }
+    .share-footer { display:flex; gap:10px; margin-top:16px; align-items:center; }
+    .share-submit { font-family:system-ui,sans-serif; font-size:.9rem; font-weight:600; padding:10px 22px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; transition:filter .15s; }
+    .share-submit:hover { filter:brightness(1.1); }
+    .share-submit:disabled { opacity:.5; cursor:not-allowed; filter:none; }
+
+    /* REVIEW MODAL */
+    #review-overlay { position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:1100; display:none; align-items:flex-start; justify-content:center; padding:24px 16px; overflow-y:auto; }
+    #review-overlay.open { display:flex; }
+    .review-modal { background:var(--card); border-radius:var(--radius); box-shadow:0 8px 60px rgba(0,0,0,.45); width:100%; max-width:680px; flex-shrink:0; overflow:hidden; }
+    .review-modal-hd { display:flex; align-items:center; padding:15px 20px; background:var(--header); color:#f4ebe0; border-bottom:3px solid var(--accent); }
+    .review-modal-hd h2 { font-size:1.05rem; font-weight:normal; flex:1; }
+    .review-body { padding:20px 22px 28px; }
+    .review-empty { text-align:center; padding:48px 32px; font-family:system-ui,sans-serif; color:var(--text-mid); }
+    .rv-card { border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; margin-bottom:14px; }
+    .rv-photo-row { display:flex; gap:12px; padding:12px 14px; background:var(--bg); border-bottom:1px solid var(--border); align-items:flex-start; }
+    .rv-thumb { width:72px; height:72px; border-radius:6px; object-fit:cover; flex-shrink:0; }
+    .rv-photo-info { flex:1; min-width:0; font-family:system-ui,sans-serif; font-size:.82rem; color:var(--text-mid); }
+    .rv-photo-info strong { color:var(--text); display:block; margin-bottom:2px; }
+    .rv-contrib { padding:12px 14px; }
+    .rv-contrib-hd { display:flex; align-items:baseline; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+    .rv-name { font-family:system-ui,sans-serif; font-weight:600; font-size:.88rem; color:var(--text); }
+    .rv-email { font-family:system-ui,sans-serif; font-size:.76rem; color:var(--text-light); }
+    .rv-date { margin-left:auto; font-family:system-ui,sans-serif; font-size:.72rem; color:var(--text-light); }
+    .rv-field { font-family:system-ui,sans-serif; font-size:.84rem; color:var(--text); margin-bottom:5px; line-height:1.5; }
+    .rv-label { font-size:.68rem; font-weight:700; color:var(--text-light); text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:1px; }
+    .rv-actions { display:flex; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); align-items:center; }
+    .rv-btn { font-family:system-ui,sans-serif; font-size:.78rem; font-weight:600; padding:6px 14px; border:none; border-radius:var(--radius-sm); cursor:pointer; transition:filter .12s; }
+    .rv-btn:hover { filter:brightness(1.1); }
+    .rv-btn:disabled { opacity:.4; cursor:not-allowed; filter:none; }
+    .rv-accept { background:#3a7a4a; color:#fff; }
+    .rv-reject { background:var(--del); color:#fff; }
+    .rv-status { font-family:system-ui,sans-serif; font-size:.78rem; color:var(--text-light); margin-left:4px; }
+    .rv-section-hd { font-size:.75rem; font-weight:700; color:var(--text-light); text-transform:uppercase; letter-spacing:.06em; margin:20px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+    .rv-upload-card { border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; margin-bottom:14px; }
+    .rv-upload-img { width:100%; max-height:260px; object-fit:contain; background:#1a100a; display:block; }
+    .rv-upload-info { padding:12px 14px; }
+    .rv-save-btn { background:var(--accent); color:#fff; }
+    .rv-dl-btn { background:var(--bg); color:var(--text-mid); border:1px solid var(--border) !important; text-decoration:none; display:inline-flex; align-items:center; }
+
+    @media (max-width:600px) {
+      header h1 { font-size:1.1rem; }
+      .meta-grid { grid-template-columns:1fr; }
+      .field.span2 { grid-column:1; }
+      .btn { font-size:.78rem; padding:7px 11px; }
+      .photo-frame { min-height:200px; }
+      .picker-card, .onboard-card { padding:32px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="header-icon">&#128247;</div>
+    <div class="header-text">
+      <h1>MemoryKeeper</h1>
+      <div class="tagline" id="hdr-tagline">Loading&hellip;</div>
+    </div>
+    <button class="hdr-btn" onclick="openHelp()">&#8505; Help</button>
+    <button class="hdr-btn" id="btn-share"  style="display:none" onclick="openShareModal()">&#127760; Share</button>
+    <button class="hdr-btn" id="btn-review" style="display:none" onclick="openReviewModal()">&#128228; Contributions</button>
+    <button class="hdr-btn" id="btn-change" style="display:none" onclick="changeFolder()">&#128193; Folder</button>
+    <button class="hdr-btn" id="btn-archives" style="display:none" onclick="showDashboard()">&#127968; Archives</button>
+    <button class="hdr-btn" id="btn-export" style="display:none" onclick="exportData()">&#8681; Export</button>
+    <button class="hdr-btn" onclick="doSignOut()">&#8594; Sign Out</button>
+  </div>
+</header>
+
+<!-- DASHBOARD SCREEN -->
+<div id="screen-dashboard" style="display:none">
+  <div class="dash-hd">
+    <h2>Your Archives</h2>
+    <button class="btn-new-archive" onclick="showOnboarding()">+ New Archive</button>
+  </div>
+  <div id="archive-list" class="archive-list">
+    <div class="dash-empty">Loading&hellip;</div>
+  </div>
+</div>
+
+<!-- ONBOARDING SCREEN -->
+<div id="screen-onboarding" style="display:none">
+  <div class="onboard-card">
+    <span class="onboard-icon">&#128247;</span>
+    <h2>Create your first archive</h2>
+    <p>An archive is a named collection for a set of family photos — like "Grandma's Albums" or "Summer Vacations".</p>
+    <div class="onboard-field">
+      <label>Archive name</label>
+      <input type="text" id="inp-archive-name" placeholder="e.g. Grandma's Albums"
+             onkeydown="if(event.key==='Enter') doCreateArchive()" />
+    </div>
+    <button class="btn-create-archive" id="btn-create-archive" onclick="doCreateArchive()">Create Archive &amp; Open Photos</button>
+  </div>
+</div>
+
+<!-- PICKER SCREEN -->
+<div id="screen-picker" style="display:none">
+  <div class="picker-card">
+    <div id="state-checking">
+      <span class="picker-big-icon">&#128193;</span>
+      <p style="color:var(--text-light)">Loading&hellip;</p>
+    </div>
+    <div id="state-reopen" style="display:none">
+      <span class="picker-big-icon">&#128247;</span>
+      <div id="picker-archive-chip" class="picker-archive-label"></div>
+      <h2>Welcome back</h2>
+      <p>Pick up where you left off, or open a different folder.</p>
+      <div id="recent-list" class="recent-list"></div>
+      <hr class="picker-divider" />
+      <button class="btn-link" onclick="showOpenState()">&#128193; Open a different folder</button>
+    </div>
+    <div id="state-open" style="display:none">
+      <span class="picker-big-icon">&#128193;</span>
+      <div id="picker-archive-chip2" class="picker-archive-label"></div>
+      <h2>Open your photos folder</h2>
+      <p>Select the folder where your family photos are stored.<br/>All image files will be loaded automatically.</p>
+      <button class="btn-open" onclick="openFolder()">&#128193; Open Photos Folder</button>
+      <p class="picker-hint">Supports JPG, PNG, GIF, WebP, HEIC, and more.<br/>Notes and tags are saved in your photos folder.</p>
+    </div>
+    <input type="file" id="folder-input" webkitdirectory multiple accept="image/*"
+           onchange="handleFolderInput(event)" style="display:none" />
+  </div>
+</div>
+
+<!-- REVIEW SCREEN -->
+<div id="screen-review" style="display:none">
+  <div class="stats-bar">
+    <div class="stats-inner">
+      <div class="stat" onclick="switchToMode('random-unreviewed')" title="Review unreviewed">
+        <span>Remaining</span><span class="stat-value" id="stat-remaining">0</span>
+      </div>
+      <div class="stat" onclick="switchToMode('all-reviewed')" title="All reviewed">
+        <span>Reviewed</span><span class="stat-value" id="stat-reviewed">0</span>
+      </div>
+      <div class="stat" onclick="switchToMode('favorites')" title="Favorites">
+        <span>&#9733; Favorites</span><span class="stat-value" id="stat-favorites">0</span>
+      </div>
+      <div class="stat" onclick="switchToMode('best-shots')" title="Best shots">
+        <span>&#9670; Best Shots</span><span class="stat-value" id="stat-bestshots">0</span>
+      </div>
+      <div class="stat" onclick="switchToMode('hidden')" title="Hidden">
+        <span>&#9675; Hidden</span><span class="stat-value" id="stat-hidden">0</span>
+      </div>
+    </div>
+  </div>
+  <div class="controls-bar">
+    <div class="controls-inner">
+      <span class="ctrl-label">Mode:</span>
+      <select id="mode-select" onchange="onModeChange()">
+        <option value="random-unreviewed">Random Unreviewed</option>
+        <option value="favorites">Favorites</option>
+        <option value="best-shots">Best Shots</option>
+        <option value="hidden">Hidden</option>
+        <option value="by-person">By Person</option>
+        <option value="by-tag">By Tag</option>
+        <option value="by-holiday">By Holiday / Event</option>
+        <option value="by-year">By Year / Date</option>
+        <option value="all-reviewed">All Reviewed</option>
+      </select>
+      <span id="filter-wrap" style="display:none; align-items:center; gap:8px;">
+        <span class="ctrl-label" id="filter-label">Filter:</span>
+        <span id="filter-control"></span>
+      </span>
+      <div class="controls-right">
+        <span class="photo-counter" id="photo-counter"></span>
+        <button id="btn-view-single"  class="view-btn active" onclick="setView('single')"  title="Single">&#9646; Single</button>
+        <button id="btn-view-gallery" class="view-btn"        onclick="setView('gallery')" title="Gallery">&#8767; Gallery</button>
+        <button id="btn-select-all"   class="view-btn"        onclick="selectAll()" style="display:none">&#9635; All</button>
+      </div>
+    </div>
+  </div>
+  <main>
+    <div id="main-content"></div>
+  </main>
+  <div class="kb-hints">
+    <span><span class="kb-key">&#8592;/&#8594;</span> Skip</span>
+    <span><span class="kb-key">S</span> Save &amp; Next</span>
+    <span><span class="kb-key">F</span> Favorite</span>
+    <span><span class="kb-key">B</span> Best Shot</span>
+    <span><span class="kb-key">H</span> Hide</span>
+    <span><span class="kb-key">G</span> Gallery</span>
+    <span><span class="kb-key">Z</span> Zoom</span>
+    <span><span class="kb-key">?</span> Help</span>
+  </div>
+  <div id="bulk-bar">
+    <div class="bulk-inner">
+      <span class="bulk-count" id="bulk-count">0 selected</span>
+      <button class="bulk-btn" onclick="bulkAction('favorite')">&#9733; Favorite</button>
+      <button class="bulk-btn" onclick="bulkAction('bestshot')">&#9670; Best Shot</button>
+      <button class="bulk-btn" onclick="bulkAction('hide')">&#9675; Hide</button>
+      <button class="bulk-btn" onclick="bulkAction('review')">&#10003; Mark Kept</button>
+      <button class="bulk-btn" id="bulk-share-btn" onclick="openShareModalForSelected()">&#127760; Share Selected</button>
+      <button class="bulk-btn bulk-clear" onclick="clearSelection()">&#10005; Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- ZOOM OVERLAY -->
+<div id="zoom-overlay" onclick="closeZoom()">
+  <img id="zoom-img" src="" alt="" />
+</div>
+
+<!-- HELP OVERLAY -->
+<div id="help-overlay">
+  <div class="help-modal">
+    <div class="help-hd">
+      <h2>&#8505; MemoryKeeper Help</h2>
+      <button class="help-close" onclick="closeHelp()">&#10005;</button>
+    </div>
+    <div class="help-body">
+      <h3>Getting Started</h3>
+      <p>MemoryKeeper helps you review, tag, and share your family photos. Your photos stay on your device — only resized previews are uploaded when you share.</p>
+      <h3>Archives</h3>
+      <p>Each archive is a named collection (e.g. "Grandma's Albums"). You can have multiple archives for different branches of your family.</p>
+      <h3>Review Actions</h3>
+      <ul>
+        <li><strong>&#9670; Best Shot</strong> — print-quality photo worth preserving</li>
+        <li><strong>&#9733; Favorite</strong> — personal favourite</li>
+        <li><strong>&#9675; Hide</strong> — keeps but hides from share view</li>
+        <li><strong>&#10005; Delete (App Only)</strong> — removes from this app; file stays on disk</li>
+        <li><strong>Save &amp; Next</strong> — saves tags/notes and moves to next photo</li>
+      </ul>
+      <h3>Sharing</h3>
+      <p>Click <strong>Share</strong> to upload resized previews of your photos and generate a link family members can open to add memories and names. Contributors don't need an account.</p>
+      <h3>Reviewing Contributions</h3>
+      <p>Click <strong>Contributions</strong> to review memory submissions and uploaded photos from family members. Accept a memory to merge it into your local metadata.</p>
+      <h3>Keyboard Shortcuts</h3>
+      <ul>
+        <li><strong>Arrow keys / Space</strong> — skip forward / backward</li>
+        <li><strong>S</strong> — Save &amp; Next</li>
+        <li><strong>F</strong> — toggle Favorite</li>
+        <li><strong>B</strong> — toggle Best Shot</li>
+        <li><strong>H</strong> — toggle Hide</li>
+        <li><strong>G</strong> — toggle Gallery view</li>
+        <li><strong>Z</strong> — zoom current photo</li>
+        <li><strong>?</strong> — this help panel</li>
+        <li><strong>Esc</strong> — close any panel</li>
+      </ul>
+      <h3>Data Storage</h3>
+      <p>On Chrome/Edge: tags and notes are saved as <code>mk-metadata.json</code> directly in your photos folder — the file travels with your photos. On Firefox/Safari: data is kept in your browser's localStorage and can be exported as JSON.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE OVERLAY -->
+<div id="share-overlay">
+  <div class="share-modal">
+    <div class="share-modal-hd">
+      <h2>&#127760; Share Collection</h2>
+      <button class="help-close" onclick="closeShareModal()">&#10005;</button>
+    </div>
+    <div class="share-body">
+      <div id="share-form">
+        <div class="share-field">
+          <label>Collection title</label>
+          <input type="text" id="share-title" placeholder="e.g. Summer 1994 Photos" />
+        </div>
+        <div class="share-field">
+          <label>Description (optional)</label>
+          <textarea id="share-desc" placeholder="A note for your family…"></textarea>
+        </div>
+        <label class="share-toggle">
+          <input type="checkbox" id="share-downloads" /> Allow family to download photos
+        </label>
+        <div class="share-count-note" id="share-count-note"></div>
+        <div class="share-prog-wrap" id="share-prog-wrap">
+          <div class="share-prog-bar"><div class="share-prog-fill" id="share-prog-fill"></div></div>
+          <div class="share-prog-text" id="share-prog-text"></div>
+        </div>
+        <div class="share-footer">
+          <button class="share-submit" id="share-submit-btn" onclick="doCreateShare()">&#9650; Upload &amp; Get Link</button>
+          <button class="btn-link" onclick="closeShareModal()">Cancel</button>
+        </div>
+      </div>
+      <div class="share-result" id="share-result">
+        <p style="font-family:system-ui,sans-serif;font-size:.88rem;color:var(--text-mid);margin-bottom:6px;">Share this link with your family:</p>
+        <div class="share-link-row">
+          <input class="share-link-inp" id="share-link-inp" readonly />
+          <button class="share-copy-btn" onclick="copyShareLink()">Copy</button>
+        </div>
+        <div style="margin-top:14px;text-align:right">
+          <button class="btn-link" onclick="closeShareModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REVIEW OVERLAY -->
+<div id="review-overlay">
+  <div class="review-modal">
+    <div class="review-modal-hd">
+      <h2>&#128228; Family Contributions</h2>
+      <button class="help-close" onclick="closeReviewModal()">&#10005;</button>
+    </div>
+    <div class="review-body" id="review-body"></div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+// ── SUPABASE ─────────────────────────────────────────────────
+const SUPA_URL = 'https://ebungmhgfyawhnnqykmd.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVidW5nbWhnZnlhd2hubnF5a21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0OTQ2OTgsImV4cCI6MjA5NDA3MDY5OH0.P6sKZfGtSrpFWJTNkaRhb8Fwb_7uUP_PVqq5ww8WhFU';
+const SHARE_BASE_URL = 'https://christine295.github.io/MemoryKeeper';
+
+const _sb = createClient(SUPA_URL, SUPA_KEY);
+function db() { return _sb; }
+
+// ── AUTH STATE ───────────────────────────────────────────────
+let currentUser      = null;
+let currentArchiveId = null;
+let currentArchiveName = '';
+
+// ── PHOTO STATE ──────────────────────────────────────────────
+let photoLibrary = [];
+let folderName   = '';
+let dirHandle    = null;
+
+const SUPPORTS_FS   = typeof window.showDirectoryPicker === 'function';
+const META_FILENAME = 'mk-metadata.json';
+let metaStore = {};
+
+// ── APP STATE ────────────────────────────────────────────────
+const state = {
+  mode: 'random-unreviewed', filter: '', queue: [], queueIdx: 0,
+  currentId: null, view: 'single'
+};
+let selectedIds = new Set();
+
+// ── UTILITY ──────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+async function init() {
+  const { data: { session } } = await db().auth.getSession();
+  if (!session) { location.replace('index.html'); return; }
+  currentUser = session.user;
+
+  db().auth.onAuthStateChange((event, sess) => {
+    if (event === 'SIGNED_OUT') location.replace('index.html');
+  });
+
+  document.getElementById('hdr-tagline').textContent = currentUser.email;
+  await loadDashboard();
+}
+
+// ════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════════════════════
+async function loadDashboard() {
+  showScreen('screen-dashboard');
+  document.getElementById('btn-archives').style.display = 'none';
+  document.getElementById('btn-share').style.display    = 'none';
+  document.getElementById('btn-review').style.display   = 'none';
+  document.getElementById('btn-change').style.display   = 'none';
+  document.getElementById('btn-export').style.display   = 'none';
+
+  const { data: archives, error } = await db().from('archives')
+    .select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+
+  if (error) {
+    document.getElementById('archive-list').innerHTML =
+      `<div class="dash-empty">Error loading archives: ${esc(error.message)}</div>`;
+    return;
+  }
+
+  if (!archives?.length) {
+    showOnboarding();
+    return;
+  }
+
+  document.getElementById('archive-list').innerHTML = archives.map(a => `
+    <div class="archive-card" onclick="openArchive('${esc(a.id)}','${esc(a.name)}')">
+      <div class="archive-icon">&#128247;</div>
+      <div class="archive-info">
+        <div class="archive-name">${esc(a.name)}</div>
+        <div class="archive-meta">Created ${new Date(a.created_at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}</div>
+      </div>
+      <button class="archive-open-btn" onclick="event.stopPropagation();openArchive('${esc(a.id)}','${esc(a.name)}')">Open &#8594;</button>
+    </div>`).join('');
+}
+
+window.showDashboard = loadDashboard;
+
+window.showOnboarding = function() {
+  showScreen('screen-onboarding');
+  setTimeout(() => document.getElementById('inp-archive-name').focus(), 80);
+};
+
+window.doCreateArchive = async function() {
+  const name = document.getElementById('inp-archive-name').value.trim();
+  if (!name) { document.getElementById('inp-archive-name').focus(); return; }
+  const btn = document.getElementById('btn-create-archive');
+  btn.disabled = true;
+  const { data, error } = await db().from('archives')
+    .insert({ user_id: currentUser.id, name }).select().single();
+  if (error) { alert('Failed to create archive: ' + error.message); btn.disabled = false; return; }
+  openArchive(data.id, data.name);
+};
+
+function openArchive(id, name) {
+  currentArchiveId   = id;
+  currentArchiveName = name;
+  document.getElementById('hdr-tagline').textContent = name + ' — ' + currentUser.email;
+  document.getElementById('btn-archives').style.display = '';
+  showPickerScreen();
+}
+
+// ════════════════════════════════════════════════════════════
+//  SCREEN MANAGEMENT
+// ════════════════════════════════════════════════════════════
+function showScreen(id) {
+  ['screen-dashboard','screen-onboarding','screen-picker','screen-review'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? '' : 'none';
+  });
+}
+
+function showPickerState(id) {
+  ['state-checking','state-reopen','state-open'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? '' : 'none';
+  });
+}
+
+function showOpenState() { showPickerState('state-open'); }
+
+async function showPickerScreen() {
+  showScreen('screen-picker');
+  showPickerState('state-checking');
+  document.getElementById('picker-archive-chip').textContent  = '&#128247; ' + currentArchiveName;
+  document.getElementById('picker-archive-chip2').textContent = '&#128247; ' + currentArchiveName;
+
+  const recent = await getRecentFolders();
+  if (recent.length) {
+    const list = document.getElementById('recent-list');
+    list.innerHTML = recent.map(r => `
+      <div class="recent-item">
+        <div class="recent-item-header">
+          <span class="recent-folder-name">&#128193; ${esc(r.name)}</span>
+          <button class="btn-open-sm" onclick="reopenSpecific('${esc(r.name)}')">Open</button>
+        </div>
+      </div>`).join('');
+    showPickerState('state-reopen');
+  } else {
+    showPickerState('state-open');
+  }
+}
+
+window.changeFolder = function() {
+  showPickerScreen();
+  document.getElementById('btn-share').style.display  = 'none';
+  document.getElementById('btn-review').style.display = 'none';
+  document.getElementById('btn-change').style.display = 'none';
+  document.getElementById('btn-export').style.display = 'none';
+};
+
+function enterReviewMode() {
+  showScreen('screen-review');
+  document.getElementById('btn-change').style.display  = '';
+  document.getElementById('btn-share').style.display   = dirHandle ? '' : 'none';
+  document.getElementById('btn-review').style.display  = '';
+  document.getElementById('btn-export').style.display  = dirHandle ? 'none' : '';
+  state.mode    = 'random-unreviewed';
+  state.filter  = '';
+  state.queueIdx = 0;
+  state.view    = 'single';
+  selectedIds.clear();
+  document.getElementById('mode-select').value = 'random-unreviewed';
+  document.getElementById('filter-wrap').style.display = 'none';
+  document.getElementById('btn-view-single').classList.add('active');
+  document.getElementById('btn-view-gallery').classList.remove('active');
+  state.queue = buildFreshQueue();
+  render();
+}
+
+window.doSignOut = async function() {
+  await db().auth.signOut();
+};
+
+// ════════════════════════════════════════════════════════════
+//  META STORAGE
+// ════════════════════════════════════════════════════════════
+function blankMeta(id) {
+  return { id, people:'', approximateDate:'', location:'', holidayEvent:'',
+           tags:'', memoryNote:'', status:'unreviewed', favorite:false,
+           bestShot:false, reviewedDate:null };
+}
+function readMeta(id)  { return { ...blankMeta(id), ...(metaStore[id] || {}) }; }
+function writeMeta(id, patch) {
+  metaStore[id] = { ...blankMeta(id), ...(metaStore[id] || {}), ...patch };
+  persistMeta();
+}
+
+async function persistMeta() {
+  if (dirHandle) {
+    try {
+      const fh = await dirHandle.getFileHandle(META_FILENAME, { create:true });
+      const w  = await fh.createWritable();
+      await w.write(JSON.stringify(metaStore, null, 2));
+      await w.close();
+      return;
+    } catch(e) { console.warn('Could not write metadata:', e); }
+  }
+  try { localStorage.setItem('mk_' + currentArchiveId + '_' + folderName, JSON.stringify(metaStore)); } catch {}
+}
+
+async function loadMeta() {
+  metaStore = {};
+  if (dirHandle) {
+    try {
+      const fh   = await dirHandle.getFileHandle(META_FILENAME);
+      const file = await fh.getFile();
+      metaStore  = JSON.parse(await file.text());
+      return;
+    } catch {}
+  }
+  try { metaStore = JSON.parse(localStorage.getItem('mk_' + currentArchiveId + '_' + folderName) || '{}'); } catch {}
+}
+
+// ════════════════════════════════════════════════════════════
+//  INDEXEDDB — folder handles
+// ════════════════════════════════════════════════════════════
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('mk1', 1);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('folders')) d.createObjectStore('folders', { keyPath:'name' });
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+async function addToRecentFolders(handle) {
+  try {
+    const d  = await openDB();
+    const tx = d.transaction('folders','readwrite');
+    tx.objectStore('folders').put({ name:handle.name, lastOpened:Date.now(), handle });
+    await new Promise(r => tx.oncomplete = r);
+    d.close();
+  } catch {}
+}
+
+async function getRecentFolders() {
+  try {
+    const d   = await openDB();
+    const tx  = d.transaction('folders','readonly');
+    const req = tx.objectStore('folders').getAll();
+    const all = await new Promise((res,rej) => { req.onsuccess = () => res(req.result); req.onerror = rej; });
+    d.close();
+    return all.sort((a,b) => b.lastOpened - a.lastOpened).slice(0, 5);
+  } catch { return []; }
+}
+
+window.reopenSpecific = async function(name) {
+  try {
+    const d   = await openDB();
+    const tx  = d.transaction('folders','readonly');
+    const req = tx.objectStore('folders').get(name);
+    const rec = await new Promise((res,rej) => { req.onsuccess = () => res(req.result); req.onerror = rej; });
+    d.close();
+    if (!rec?.handle) { showOpenState(); return; }
+    const perm = await rec.handle.requestPermission({ mode:'readwrite' });
+    if (perm === 'granted') await loadFromHandle(rec.handle, false);
+    else showOpenState();
+  } catch { showOpenState(); }
+};
+
+// ════════════════════════════════════════════════════════════
+//  FOLDER LOADING
+// ════════════════════════════════════════════════════════════
+const IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|tiff?|heic|avif|svg)$/i;
+function isImage(name) { return IMAGE_RE.test(name) && !name.startsWith('.'); }
+function naturalSort(a, b) { return a.localeCompare(b, undefined, { numeric:true, sensitivity:'base' }); }
+
+async function buildLibrary(entries, name) {
+  photoLibrary.forEach(p => p._url && URL.revokeObjectURL(p._url));
+  const sorted = [...entries].sort((a,b) => naturalSort(a.name, b.name));
+  photoLibrary = await Promise.all(sorted.map(async entry => {
+    const file = await entry.getFile();
+    const url  = URL.createObjectURL(file);
+    return { id:entry.name, fileName:entry.name, filePath:url, _url:url, _entry:entry };
+  }));
+  folderName = name;
+}
+
+let lastHandle = null;
+
+window.openFolder = async function() {
+  if (!SUPPORTS_FS) { document.getElementById('folder-input').click(); return; }
+  try {
+    const handle = await window.showDirectoryPicker({ mode:'readwrite' });
+    await loadFromHandle(handle, true);
+  } catch(e) {
+    if (e.name === 'AbortError') return;
+    document.getElementById('folder-input').click();
+  }
+};
+
+async function loadFromHandle(handle, store = false) {
+  lastHandle = handle;
+  dirHandle  = handle;
+  folderName = handle.name;
+  await loadMeta();
+  const entries = [];
+  for await (const entry of handle.values()) {
+    if (entry.kind === 'file' && isImage(entry.name)) entries.push(entry);
+  }
+  if (!entries.length) {
+    alert(`No image files found in "${handle.name}". Make sure the folder contains JPG, PNG, or other image files.`);
+    return;
+  }
+  if (store) await addToRecentFolders(handle);
+  await buildLibrary(entries, handle.name);
+  enterReviewMode();
+}
+
+window.handleFolderInput = function(e) {
+  const allFiles = Array.from(e.target.files);
+  if (!allFiles.length) return;
+  dirHandle  = null;
+  folderName = allFiles[0].webkitRelativePath.split('/')[0];
+  try { metaStore = JSON.parse(localStorage.getItem('mk_' + currentArchiveId + '_' + folderName) || '{}'); } catch { metaStore = {}; }
+  const topLevel = allFiles.filter(f => {
+    const parts = f.webkitRelativePath.split('/');
+    return parts.length === 2 && isImage(f.name);
+  });
+  if (!topLevel.length) { alert('No image files found in the top level of that folder.'); return; }
+  const entries = topLevel.map(f => ({ name:f.name, getFile:() => Promise.resolve(f) }));
+  buildLibrary(entries, folderName).then(enterReviewMode);
+};
+
+// ════════════════════════════════════════════════════════════
+//  QUEUE & RENDER
+// ════════════════════════════════════════════════════════════
+function qualifies(id) {
+  const m = metaStore[id] || blankMeta(id);
+  if (m.status === 'app_deleted') return false;
+  const f = state.filter.trim().toLowerCase();
+  switch (state.mode) {
+    case 'random-unreviewed': return m.status === 'unreviewed';
+    case 'favorites':         return m.favorite === true;
+    case 'best-shots':        return m.bestShot === true;
+    case 'hidden':            return m.status === 'hidden';
+    case 'all-reviewed':      return m.status !== 'unreviewed';
+    case 'by-person':   return f ? m.people.toLowerCase().includes(f)         : m.status !== 'unreviewed';
+    case 'by-tag':      return f ? m.tags.toLowerCase().includes(f)           : m.status !== 'unreviewed';
+    case 'by-holiday':  return f ? m.holidayEvent.toLowerCase().includes(f)   : m.status !== 'unreviewed';
+    case 'by-year':     return f ? m.approximateDate.toLowerCase().includes(f): m.status !== 'unreviewed';
+    default: return false;
+  }
+}
+
+function buildFreshQueue() {
+  let ids = photoLibrary.filter(p => qualifies(p.id)).map(p => p.id);
+  if (state.mode === 'random-unreviewed') ids = shuffle(ids);
+  return ids;
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function render() {
+  updateStats();
+  updateCounter();
+  const id = state.queue[state.queueIdx] ?? null;
+  state.currentId = id;
+  document.getElementById('main-content').innerHTML =
+    state.view === 'gallery' ? renderGallery()
+    : id ? renderCard(id)
+    : renderEmpty();
+  if (state.view === 'single' && id) tryFillExifDate(id);
+  updateBulkBar();
+  updateSelectAllBtn();
+}
+
+function updateStats() {
+  const counts = { remaining:0, reviewed:0, favorites:0, bestshots:0, hidden:0 };
+  photoLibrary.forEach(p => {
+    const m = metaStore[p.id] || blankMeta(p.id);
+    if (m.status === 'app_deleted') return;
+    if (m.status === 'unreviewed') counts.remaining++;
+    else counts.reviewed++;
+    if (m.favorite) counts.favorites++;
+    if (m.bestShot) counts.bestshots++;
+    if (m.status === 'hidden') counts.hidden++;
+  });
+  ['remaining','reviewed','favorites','bestshots','hidden'].forEach(k => {
+    const el = document.getElementById('stat-' + k);
+    if (el) el.textContent = counts[k];
+  });
+}
+
+function updateCounter() {
+  const el = document.getElementById('photo-counter');
+  if (el) el.textContent = state.queue.length
+    ? (state.view === 'gallery' ? state.queue.length + ' photos' : `${state.queueIdx + 1} / ${state.queue.length}`)
+    : '';
+}
+
+function switchToMode(m) {
+  document.getElementById('mode-select').value = m;
+  state.mode = m;
+  onModeChange();
+}
+
+window.onModeChange = function() {
+  state.mode   = document.getElementById('mode-select').value;
+  state.filter = '';
+  const needsFilter = ['by-person','by-tag','by-holiday','by-year'].includes(state.mode);
+  const fw = document.getElementById('filter-wrap');
+  if (needsFilter) {
+    fw.style.display = 'flex';
+    const labels = { 'by-person':'Person', 'by-tag':'Tag', 'by-holiday':'Holiday/Event', 'by-year':'Year' };
+    document.getElementById('filter-label').textContent = labels[state.mode] + ':';
+    document.getElementById('filter-control').innerHTML =
+      `<input class="ctrl-input" style="width:160px" placeholder="Type to filter…"
+         oninput="state.filter=this.value;state.queue=buildFreshQueueExposed();state.queueIdx=0;render()" />`;
+  } else {
+    fw.style.display = 'none';
+  }
+  state.queue    = buildFreshQueue();
+  state.queueIdx = 0;
+  render();
+};
+
+window.buildFreshQueueExposed = buildFreshQueue;
+
+function isShownInGallery(id) {
+  const m = metaStore[id] || blankMeta(id);
+  if (m.status === 'app_deleted') return false;
+  if (state.mode !== 'hidden' && m.status === 'hidden') return false;
+  return true;
+}
+
+function renderGallery() {
+  const shown = state.queue.map((id,qIdx) => ({id,qIdx})).filter(({id}) => isShownInGallery(id));
+  if (!shown.length) return renderEmpty();
+  return '<div class="gallery-grid">' + shown.map(({id,qIdx}) => {
+    const photo = photoLibrary.find(p => p.id === id);
+    const m     = readMeta(id);
+    const sel   = selectedIds.has(id) ? ' selected' : '';
+    return `<div class="gallery-item${sel}" data-id="${esc(id)}"
+         onclick="onGalleryItemClick(event,'${esc(id)}',${qIdx})" title="${esc(photo.fileName)}">
+      <button class="g-checkbox" onclick="event.stopPropagation();toggleSelect('${esc(id)}')" title="Select">&#10003;</button>
+      <img src="${esc(photo.filePath)}" alt="${esc(photo.fileName)}" loading="lazy"
+           onerror="this.outerHTML='<div class=\\'gallery-missing\\'>&#128247;</div>'" />
+      <span class="g-badge ${badgeClass(m)}">${badgeText(m)}</span>
+      <span class="g-name">${esc(photo.fileName)}</span>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function badgeClass(m) {
+  if (m.favorite)            return 'badge-favorite';
+  if (m.bestShot)            return 'badge-bestshot';
+  if (m.status === 'kept')   return 'badge-kept';
+  if (m.status === 'hidden') return 'badge-hidden';
+  return 'badge-unreviewed';
+}
+function badgeText(m) {
+  if (m.favorite)            return '&#9733; Favorite';
+  if (m.bestShot)            return '&#9670; Best Shot';
+  if (m.status === 'kept')   return 'Kept';
+  if (m.status === 'hidden') return 'Hidden';
+  return 'Unreviewed';
+}
+
+function renderCard(id) {
+  const photo = photoLibrary.find(p => p.id === id);
+  const m     = readMeta(id);
+  return `
+<div class="photo-card">
+  <div class="photo-frame">
+    <img src="${esc(photo.filePath)}" alt="${esc(photo.fileName)}" style="cursor:zoom-in"
+         onclick="openZoom('${esc(photo.filePath)}')"
+         onerror="this.remove();document.getElementById('miss-${esc(id)}').style.display='flex'" />
+    <div class="photo-missing" id="miss-${esc(id)}" style="display:none">
+      <svg width="90" height="70" viewBox="0 0 90 70" fill="none">
+        <rect width="90" height="70" rx="6" fill="#3a2215"/>
+        <rect x="10" y="10" width="70" height="50" rx="3" fill="#5a3a25"/>
+        <circle cx="26" cy="26" r="7" fill="#8a6040"/>
+        <path d="M10 42 L28 20 L44 38 L58 28 L80 42 L80 60 L10 60 Z" fill="#7a5030"/>
+      </svg>
+      <p>Could not load:<br/><code>${esc(photo.fileName)}</code></p>
+    </div>
+    <span class="badge ${badgeClass(m)}">${badgeText(m)}</span>
+  </div>
+  <div class="actions">
+    <button class="btn btn-bestshot ${m.bestShot?'btn-on':''}" onclick="doAction('bestshot')">&#9670; Best Shot</button>
+    <button class="btn btn-fav ${m.favorite?'btn-on':''}"      onclick="doAction('favorite')">&#9733; Favorite</button>
+    <button class="btn btn-hide"  onclick="doAction('hide')">${m.status==='hidden'?'&#9679; Unhide':'&#9675; Hide'}</button>
+    <button class="btn btn-del"   onclick="doAction('delete')">&#10005; Delete (App Only)</button>
+    <button class="btn btn-skip"  onclick="doSkipBack()">&#8592; Back</button>
+    <button class="btn btn-skip"  onclick="doSkip()">&#8594; Next</button>
+  </div>
+  <div class="meta-grid">
+    <div class="field"><label for="f-people">People in photo</label>
+      <input type="text" id="f-people" placeholder="e.g. Grandma Rose, Uncle Mike" value="${esc(m.people)}" /></div>
+    <div class="field"><label for="f-date">Approximate date</label>
+      <input type="text" id="f-date" placeholder="e.g. Summer 1994" value="${esc(m.approximateDate)}" /></div>
+    <div class="field"><label for="f-location">Location</label>
+      <input type="text" id="f-location" placeholder="e.g. Grandma's house" value="${esc(m.location)}" /></div>
+    <div class="field"><label for="f-event">Holiday / Event</label>
+      <input type="text" id="f-event" placeholder="e.g. Christmas 1994" value="${esc(m.holidayEvent)}" /></div>
+    <div class="field span2"><label for="f-tags">Tags</label>
+      <input type="text" id="f-tags" placeholder="e.g. outdoor, reunion, funny" value="${esc(m.tags)}" /></div>
+    <div class="field span2"><label for="f-note">Memory / story / note</label>
+      <textarea id="f-note" placeholder="Write a memory or story about this photo…">${esc(m.memoryNote)}</textarea></div>
+  </div>
+  <div class="save-row">
+    <button class="btn btn-save" onclick="doSaveAndNext()">Save &amp; Next</button>
+    <span class="saved-flash" id="saved-flash">&#10003; Saved</span>
+  </div>
+  ${dirHandle ? `
+  <div class="move-row">
+    <span style="font-family:system-ui,sans-serif;font-size:.78rem;color:var(--text-mid);white-space:nowrap;">Move to subfolder:</span>
+    <input type="text" class="ctrl-input" id="f-move-to" placeholder="Subfolder name" style="flex:1"
+           onkeydown="if(event.key==='Enter')doMoveToSubfolder()" />
+    <button class="btn btn-move" onclick="doMoveToSubfolder()">&#8594; Move</button>
+  </div>` : ''}
+</div>`;
+}
+
+function renderEmpty() {
+  const msgs = {
+    'random-unreviewed': 'All photos reviewed — great work! Switch modes to browse.',
+    'favorites':         'No favorites yet.',
+    'best-shots':        'No best shots yet.',
+    'hidden':            'No hidden photos.',
+    'all-reviewed':      'No photos reviewed yet.',
+    'by-person': 'No photos match.', 'by-tag': 'No photos match.',
+    'by-holiday': 'No photos match.', 'by-year': 'No photos match.'
+  };
+  return `<div class="empty-state">
+    <div class="empty-icon">&#128247;</div>
+    <h2>Nothing to show</h2>
+    <p>${msgs[state.mode] ?? 'No photos found.'}</p>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  SELECTION
+// ════════════════════════════════════════════════════════════
+window.toggleSelect = function(id) {
+  selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id);
+  document.querySelector(`.gallery-item[data-id="${CSS.escape(id)}"]`)?.classList.toggle('selected', selectedIds.has(id));
+  updateBulkBar();
+};
+
+window.selectAll = function() {
+  state.queue.filter(id => isShownInGallery(id)).forEach(id => selectedIds.add(id));
+  document.querySelectorAll('.gallery-item').forEach(el => el.classList.add('selected'));
+  updateBulkBar();
+};
+
+window.clearSelection = function() {
+  selectedIds.clear();
+  document.querySelectorAll('.gallery-item.selected').forEach(el => el.classList.remove('selected'));
+  updateBulkBar();
+};
+
+function updateBulkBar() {
+  const n   = selectedIds.size;
+  const bar = document.getElementById('bulk-bar');
+  bar.style.display = n > 0 && state.view === 'gallery' ? '' : 'none';
+  document.getElementById('bulk-count').textContent = n + ' selected';
+  document.getElementById('btn-select-all').style.display = state.view === 'gallery' ? '' : 'none';
+}
+
+function updateSelectAllBtn() {
+  document.getElementById('btn-select-all').style.display = state.view === 'gallery' ? '' : 'none';
+}
+
+window.onGalleryItemClick = function(e, id, qIdx) {
+  if (selectedIds.size > 0) { window.toggleSelect(id); return; }
+  state.queueIdx = qIdx;
+  setView('single');
+};
+
+window.bulkAction = function(action) {
+  selectedIds.forEach(id => {
+    const existing = readMeta(id);
+    const now = existing.reviewedDate ?? new Date().toISOString();
+    if (action === 'favorite') metaStore[id] = { ...existing, status:'kept', favorite:true,  reviewedDate:now };
+    else if (action === 'bestshot') metaStore[id] = { ...existing, status:'kept', bestShot:true, reviewedDate:now };
+    else if (action === 'hide')     metaStore[id] = { ...existing, status:'hidden',             reviewedDate:now };
+    else if (action === 'review')   metaStore[id] = { ...existing, status:'kept',               reviewedDate:now };
+  });
+  persistMeta();
+  clearSelection();
+  render();
+};
+
+// ════════════════════════════════════════════════════════════
+//  ACTIONS
+// ════════════════════════════════════════════════════════════
+function collectFields() {
+  const g = id => document.getElementById(id)?.value.trim() ?? '';
+  return { people:g('f-people'), approximateDate:g('f-date'), location:g('f-location'),
+           holidayEvent:g('f-event'), tags:g('f-tags'), memoryNote:g('f-note') };
+}
+
+window.doAction = function(action) {
+  const id = state.currentId;
+  if (!id) return;
+  if (action === 'delete') {
+    if (!confirm('Remove this photo from the app?\n\nThe file will NOT be deleted from your computer.')) return;
+    const ex = readMeta(id);
+    writeMeta(id, { ...collectFields(), status:'app_deleted', favorite:ex.favorite, reviewedDate:ex.reviewedDate ?? new Date().toISOString() });
+    advance();
+    return;
+  }
+  const existing = readMeta(id);
+  const now      = existing.reviewedDate ?? new Date().toISOString();
+  const patches  = {
+    bestshot: { status:'kept',   favorite:existing.favorite,  bestShot:!existing.bestShot,                              reviewedDate:now },
+    favorite: { status:'kept',   favorite:!existing.favorite, bestShot:existing.bestShot,                               reviewedDate:now },
+    hide:     { status:existing.status==='hidden'?'kept':'hidden', favorite:existing.favorite, bestShot:existing.bestShot, reviewedDate:now }
+  };
+  metaStore[id] = { ...existing, ...patches[action] };
+  persistMeta();
+  updateBadge();
+  updateStats();
+};
+
+function updateBadge() {
+  const m     = readMeta(state.currentId);
+  const badge = document.querySelector('.photo-frame .badge');
+  if (badge) { badge.className = 'badge ' + badgeClass(m); badge.innerHTML = badgeText(m); }
+  document.querySelector('.btn-bestshot')?.classList.toggle('btn-on', !!m.bestShot);
+  document.querySelector('.btn-fav')?.classList.toggle('btn-on',      !!m.favorite);
+  const hideBtn = document.querySelector('.btn-hide');
+  if (hideBtn) hideBtn.innerHTML = m.status === 'hidden' ? '&#9679; Unhide' : '&#9675; Hide';
+}
+
+window.doSaveAndNext = function() {
+  const id = state.currentId;
+  if (!id) return;
+  const existing = readMeta(id);
+  writeMeta(id, { ...collectFields(), status:existing.status==='unreviewed'?'kept':existing.status,
+                  favorite:existing.favorite, reviewedDate:existing.reviewedDate ?? new Date().toISOString() });
+  const flash = document.getElementById('saved-flash');
+  if (flash) { flash.classList.add('show'); setTimeout(() => flash.classList.remove('show'), 1600); }
+  advance();
+};
+
+function advance() {
+  state.queue = state.queue.filter(id => qualifies(id));
+  if (state.queueIdx >= state.queue.length) state.queueIdx = Math.max(0, state.queue.length - 1);
+  render();
+}
+
+window.doSkip     = function() { if (state.queue.length <= 1) { render(); return; } state.queueIdx = (state.queueIdx + 1) % state.queue.length; render(); };
+window.doSkipBack = function() { if (state.queue.length <= 1) { render(); return; } state.queueIdx = (state.queueIdx - 1 + state.queue.length) % state.queue.length; render(); };
+
+window.setView = function(v) {
+  state.view = v;
+  document.getElementById('btn-view-single').classList.toggle('active',  v === 'single');
+  document.getElementById('btn-view-gallery').classList.toggle('active', v === 'gallery');
+  if (v === 'single') { selectedIds.clear(); updateBulkBar(); }
+  render();
+};
+
+window.doMoveToSubfolder = async function() {
+  const id = state.currentId;
+  if (!id || !dirHandle) return;
+  const input = document.getElementById('f-move-to');
+  const subfolderName = input?.value.trim();
+  if (!subfolderName) { input?.focus(); return; }
+  const photo = photoLibrary.find(p => p.id === id);
+  if (!photo?._entry) return;
+  try {
+    const subDir = await dirHandle.getDirectoryHandle(subfolderName, { create:true });
+    let exists = false;
+    try { await subDir.getFileHandle(photo.fileName); exists = true; } catch {}
+    if (exists && !confirm(`"${photo.fileName}" already exists in "${subfolderName}". Overwrite?`)) return;
+    const file = await photo._entry.getFile();
+    const buf  = await file.arrayBuffer();
+    const newFH = await subDir.getFileHandle(photo.fileName, { create:true });
+    const w     = await newFH.createWritable();
+    await w.write(buf); await w.close();
+    await dirHandle.removeEntry(photo.fileName);
+    if (photo._url) URL.revokeObjectURL(photo._url);
+    delete metaStore[photo.id];
+    persistMeta();
+    photoLibrary = photoLibrary.filter(p => p.id !== id);
+    state.queue  = state.queue.filter(qid => qid !== id);
+    if (state.queueIdx >= state.queue.length) state.queueIdx = Math.max(0, state.queue.length - 1);
+    if (input) input.value = '';
+    render();
+  } catch(e) { alert('Move failed: ' + e.message); }
+};
+
+window.exportData = function() {
+  const blob = new Blob([JSON.stringify(metaStore, null, 2)], { type:'application/json' });
+  const a    = Object.assign(document.createElement('a'), { href:URL.createObjectURL(blob), download:'mk-metadata.json' });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+};
+
+// ════════════════════════════════════════════════════════════
+//  ZOOM / HELP
+// ════════════════════════════════════════════════════════════
+window.openZoom  = function(src) { document.getElementById('zoom-img').src = src; document.getElementById('zoom-overlay').classList.add('open'); };
+window.closeZoom = function()    { document.getElementById('zoom-overlay').classList.remove('open'); };
+window.openHelp  = function()    { document.getElementById('help-overlay').classList.add('open'); };
+window.closeHelp = function()    { document.getElementById('help-overlay').classList.remove('open'); };
+
+// ════════════════════════════════════════════════════════════
+//  EXIF DATE
+// ════════════════════════════════════════════════════════════
+async function tryFillExifDate(id) {
+  const m = readMeta(id);
+  if (m.approximateDate) return;
+  const input = document.getElementById('f-date');
+  if (!input || input.value) return;
+  const photo = photoLibrary.find(p => p.id === id);
+  if (!photo?._entry) return;
+  try {
+    const file = await photo._entry.getFile();
+    const date = await extractExifDate(file);
+    if (date) { if (input && !input.value) input.value = date; writeMeta(id, { approximateDate:date }); }
+  } catch {}
+}
+
+async function extractExifDate(file) {
+  if (!file.name.match(/\.jpe?g$/i)) return null;
+  const buf  = await file.slice(0, 65536).arrayBuffer();
+  const view = new DataView(buf);
+  if (view.getUint16(0) !== 0xFFD8) return null;
+  let offset = 2;
+  while (offset < buf.byteLength - 4) {
+    const marker = view.getUint16(offset);
+    const segLen = view.getUint16(offset + 2);
+    if (marker === 0xFFE1 && view.getUint32(offset+4) === 0x45786966 && view.getUint16(offset+8) === 0x0000) {
+      return parseTiffDate(view, offset + 10);
+    }
+    if (marker === 0xFFDA) break;
+    offset += 2 + segLen;
+  }
+  return null;
+}
+
+function parseTiffDate(view, tiff) {
+  const le   = view.getUint16(tiff) === 0x4949;
+  const ifd0 = tiff + view.getUint32(tiff + 4, le);
+  const nEntry = view.getUint16(ifd0, le);
+  let dateStr = null, exifPtr = null;
+  for (let i = 0; i < nEntry; i++) {
+    const e = ifd0 + 2 + i * 12;
+    const tag = view.getUint16(e, le);
+    if (tag === 0x9003) { dateStr = readTiffStr(view, tiff, e, le); break; }
+    if (tag === 0x8769) exifPtr = view.getUint32(e + 8, le);
+    if (tag === 0x0132 && !dateStr) dateStr = readTiffStr(view, tiff, e, le);
+  }
+  if (!dateStr && exifPtr) {
+    const exifIFD = tiff + exifPtr;
+    const nExif   = view.getUint16(exifIFD, le);
+    for (let i = 0; i < nExif; i++) {
+      const e = exifIFD + 2 + i * 12;
+      if (view.getUint16(e, le) === 0x9003) { dateStr = readTiffStr(view, tiff, e, le); break; }
+    }
+  }
+  if (!dateStr) return null;
+  const mt = dateStr.match(/^(\d{4}):(\d{2}):(\d{2})/);
+  if (!mt || mt[1] === '0000') return null;
+  const months = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+  const mo = parseInt(mt[2]);
+  return mo > 0 ? `${months[mo-1]} ${mt[1]}` : mt[1];
+}
+
+function readTiffStr(view, tiff, entry, le) {
+  const count  = view.getUint32(entry + 4, le);
+  const valOff = count <= 4 ? entry + 8 : tiff + view.getUint32(entry + 8, le);
+  let s = '';
+  for (let i = 0; i < count - 1; i++) s += String.fromCharCode(view.getUint8(valOff + i));
+  return s;
+}
+
+// ════════════════════════════════════════════════════════════
+//  PHOTO RESIZING
+// ════════════════════════════════════════════════════════════
+function resizeToBlob(file, maxPx = 1200, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const obj = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(obj);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', quality);
+    };
+    img.onerror = reject;
+    img.src = obj;
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  SHARE
+// ════════════════════════════════════════════════════════════
+let pendingSharePhotos = [];
+
+function buildShareUrl(token) {
+  return SHARE_BASE_URL + '/share.html?share=' + token;
+}
+
+window.openShareModal = function(photosOverride) {
+  pendingSharePhotos = photosOverride ?? photoLibrary.filter(p => {
+    const s = metaStore[p.id]?.status;
+    return s !== 'hidden' && s !== 'app_deleted';
+  });
+  if (!pendingSharePhotos.length) { alert('No photos to share.'); return; }
+  const n = pendingSharePhotos.length;
+  document.getElementById('share-count-note').textContent =
+    `${n} photo${n!==1?'s':''} will be uploaded as resized previews — originals stay on your device.`;
+  document.getElementById('share-form').style.display     = '';
+  document.getElementById('share-result').style.display   = 'none';
+  document.getElementById('share-prog-wrap').style.display = 'none';
+  document.getElementById('share-title').value            = folderName || '';
+  document.getElementById('share-desc').value             = '';
+  document.getElementById('share-downloads').checked      = false;
+  document.getElementById('share-submit-btn').disabled    = false;
+  document.getElementById('share-overlay').classList.add('open');
+};
+
+window.openShareModalForSelected = function() {
+  window.openShareModal([...selectedIds].map(id => photoLibrary.find(p => p.id === id)).filter(Boolean));
+};
+window.closeShareModal = function() { document.getElementById('share-overlay').classList.remove('open'); };
+
+window.doCreateShare = async function() {
+  const title          = document.getElementById('share-title').value.trim();
+  const desc           = document.getElementById('share-desc').value.trim();
+  const allowDownloads = document.getElementById('share-downloads').checked;
+  if (!title) { document.getElementById('share-title').focus(); return; }
+
+  const btn = document.getElementById('share-submit-btn');
+  btn.disabled = true;
+  document.getElementById('share-prog-wrap').style.display = 'block';
+  document.getElementById('share-prog-fill').style.width   = '0%';
+  document.getElementById('share-prog-text').textContent   = 'Creating collection…';
+
+  const { data:col, error:colErr } = await db().from('mk_collections')
+    .insert({ archive_id:currentArchiveId, title, description:desc, allow_downloads:allowDownloads })
+    .select().single();
+
+  if (colErr) { alert('Failed to create collection: ' + colErr.message); btn.disabled = false; return; }
+
+  const total = pendingSharePhotos.length;
+  let failures = 0;
+  for (let i = 0; i < total; i++) {
+    document.getElementById('share-prog-fill').style.width  = Math.round((i/total)*100) + '%';
+    document.getElementById('share-prog-text').textContent  = `Uploading ${i+1} of ${total}…`;
+    try { await uploadSharedPhoto(col.id, i, pendingSharePhotos[i]); }
+    catch(e) { console.warn('Upload failed for', pendingSharePhotos[i].fileName, e); failures++; }
+  }
+
+  if (failures === total) {
+    alert(`All ${total} uploads failed. Check that the "previews" storage bucket exists in Supabase and is set to Public.`);
+    btn.disabled = false;
+    return;
+  }
+  document.getElementById('share-prog-fill').style.width = '100%';
+  document.getElementById('share-link-inp').value = buildShareUrl(col.share_token);
+  document.getElementById('share-form').style.display   = 'none';
+  document.getElementById('share-result').style.display = 'block';
+};
+
+async function uploadSharedPhoto(collectionId, sortOrder, photo) {
+  const file    = await photo._entry.getFile();
+  const blob    = await resizeToBlob(file);
+  const photoId = crypto.randomUUID();
+  const path    = `${collectionId}/${photoId}.jpg`;
+
+  const { error:upErr } = await db().storage.from('previews').upload(path, blob, { contentType:'image/jpeg', upsert:true });
+  if (upErr) throw upErr;
+
+  const { data:{ publicUrl } } = db().storage.from('previews').getPublicUrl(path);
+  const m = readMeta(photo.id);
+  let approximateDate = m.approximateDate;
+  if (!approximateDate) {
+    try { approximateDate = await extractExifDate(file) || ''; } catch { approximateDate = ''; }
+  }
+
+  const { error:dbErr } = await db().from('mk_photos').insert({
+    id:photoId, collection_id:collectionId,
+    file_name:photo.fileName, storage_path:path, preview_url:publicUrl,
+    people:m.people||'', approximate_date:approximateDate,
+    location:m.location||'', holiday_event:m.holidayEvent||'',
+    tags:m.tags||'', memory_note:m.memoryNote||'', sort_order:sortOrder
+  });
+  if (dbErr) throw dbErr;
+}
+
+window.copyShareLink = function() {
+  const inp = document.getElementById('share-link-inp');
+  inp.select();
+  navigator.clipboard?.writeText(inp.value).catch(() => document.execCommand('copy'));
+  const btn = document.querySelector('.share-copy-btn');
+  if (btn) { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 2000); }
+};
+
+// ════════════════════════════════════════════════════════════
+//  CONTRIBUTION REVIEW
+// ════════════════════════════════════════════════════════════
+let reviewContribsMap = {};
+
+window.openReviewModal = async function() {
+  document.getElementById('review-overlay').classList.add('open');
+  document.getElementById('review-body').innerHTML = '<div class="review-empty">Loading&#8230;</div>';
+  reviewContribsMap = {};
+
+  const { data:cols } = await db().from('mk_collections')
+    .select('id').eq('archive_id', currentArchiveId);
+
+  if (!cols?.length) {
+    document.getElementById('review-body').innerHTML =
+      '<div class="review-empty">No shared collections for this archive yet.</div>';
+    return;
+  }
+
+  const colIds = cols.map(c => c.id);
+  const [{ data:contribs }, { data:uploads }] = await Promise.all([
+    db().from('mk_contributions')
+      .select('*, mk_photos(file_name,preview_url,people,approximate_date)')
+      .in('collection_id', colIds).eq('status','pending')
+      .order('created_at', { ascending:false }),
+    db().from('mk_uploads')
+      .select('*').in('collection_id', colIds)
+      .order('created_at', { ascending:false })
+  ]);
+
+  if (!contribs?.length && !uploads?.length) {
+    document.getElementById('review-body').innerHTML = '<div class="review-empty">&#10003; No pending contributions.</div>';
+    return;
+  }
+
+  let html = '';
+  if (contribs?.length) {
+    html += `<div class="rv-section-hd">Memory Submissions (${contribs.length})</div>`;
+    contribs.forEach(c => { reviewContribsMap[c.id] = c; });
+    html += contribs.map(renderRvCard).join('');
+  }
+  if (uploads?.length) {
+    html += `<div class="rv-section-hd">Uploaded Photos (${uploads.length})</div>`;
+    html += uploads.map(renderUploadCard).join('');
+  }
+  document.getElementById('review-body').innerHTML = html;
+};
+
+window.closeReviewModal = function() { document.getElementById('review-overlay').classList.remove('open'); };
+
+function renderRvCard(c) {
+  const photo = c.mk_photos;
+  const date  = new Date(c.created_at).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+  const fields = [
+    c.memory_note        ? `<div class="rv-field"><span class="rv-label">Memory</span>${esc(c.memory_note)}</div>` : '',
+    c.suggested_people   ? `<div class="rv-field"><span class="rv-label">People</span>${esc(c.suggested_people)}</div>` : '',
+    c.suggested_date     ? `<div class="rv-field"><span class="rv-label">Date</span>${esc(c.suggested_date)}</div>` : '',
+    c.suggested_location ? `<div class="rv-field"><span class="rv-label">Location</span>${esc(c.suggested_location)}</div>` : '',
+    c.suggested_tags     ? `<div class="rv-field"><span class="rv-label">Tags</span>${esc(c.suggested_tags)}</div>` : '',
+  ].filter(Boolean).join('');
+
+  return `<div class="rv-card" id="rv-${esc(c.id)}">
+    <div class="rv-photo-row">
+      <img class="rv-thumb" src="${esc(photo?.preview_url||'')}" alt="" />
+      <div class="rv-photo-info">
+        <strong>${esc(photo?.file_name||'Unknown')}</strong>
+        ${photo?.people ? esc(photo.people)+'<br/>' : ''}
+        ${photo?.approximate_date ? esc(photo.approximate_date) : ''}
+      </div>
+    </div>
+    <div class="rv-contrib">
+      <div class="rv-contrib-hd">
+        <span class="rv-name">${esc(c.contributor_name)}</span>
+        <span class="rv-email">${esc(c.contributor_email)}</span>
+        <span class="rv-date">${date}</span>
+      </div>
+      ${fields || '<div class="rv-field" style="color:var(--text-light);font-style:italic">No content submitted.</div>'}
+      <div class="rv-actions">
+        <button class="rv-btn rv-accept" id="rv-accept-${esc(c.id)}" onclick="acceptContribution('${esc(c.id)}')">&#10003; Accept</button>
+        <button class="rv-btn rv-reject" id="rv-reject-${esc(c.id)}" onclick="rejectContribution('${esc(c.id)}')">&#10005; Reject</button>
+        <span class="rv-status" id="rv-status-${esc(c.id)}"></span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderUploadCard(u) {
+  const date   = new Date(u.created_at).toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+  const canSave = !!dirHandle;
+  return `<div class="rv-upload-card" id="rvu-${esc(u.id)}">
+    <img class="rv-upload-img" src="${esc(u.preview_url)}" alt="${esc(u.file_name)}" />
+    <div class="rv-upload-info">
+      <div class="rv-contrib-hd">
+        <span class="rv-name">${esc(u.contributor_name)}</span>
+        <span class="rv-email">${esc(u.contributor_email)}</span>
+        <span class="rv-date">${date}</span>
+      </div>
+      ${u.file_name ? `<div class="rv-field"><span class="rv-label">Filename</span>${esc(u.file_name)}</div>` : ''}
+      ${u.note      ? `<div class="rv-field"><span class="rv-label">Note</span>${esc(u.note)}</div>` : ''}
+      <div class="rv-actions">
+        ${canSave ? `<button class="rv-btn rv-save-btn" onclick="saveUploadToFolder('${esc(u.id)}','${esc(u.preview_url)}','${esc(u.file_name)}')">&#128190; Save to Folder</button>` : ''}
+        <a class="rv-btn rv-dl-btn" href="${esc(u.preview_url)}" download="${esc(u.file_name)}" target="_blank">&#8681; Download</a>
+        <button class="rv-btn rv-reject" onclick="dismissUpload('${esc(u.id)}')">&#10005; Dismiss</button>
+        <span class="rv-status" id="rvu-status-${esc(u.id)}"></span>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.saveUploadToFolder = async function(id, url, fileName) {
+  if (!dirHandle) { alert('Open your photos folder first.'); return; }
+  const btn = document.querySelector(`#rvu-${id} .rv-save-btn`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    const resp = await fetch(url);
+    const blob = await resp.blob();
+    const fh   = await dirHandle.getFileHandle(fileName || 'contributed_photo.jpg', { create:true });
+    const w    = await fh.createWritable();
+    await w.write(blob); await w.close();
+    const s = document.getElementById('rvu-status-' + id);
+    if (s) s.textContent = '✓ Saved';
+    if (btn) btn.textContent = '✓ Saved';
+  } catch(e) { alert('Save failed: ' + e.message); if (btn) { btn.disabled = false; btn.textContent = '💾 Save to Folder'; } }
+};
+
+window.dismissUpload = async function(id) {
+  await db().from('mk_uploads').delete().eq('id', id);
+  const el = document.getElementById('rvu-' + id);
+  if (el) el.remove();
+};
+
+function mergeCommaList(existing, suggested) {
+  const a = existing ? existing.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const b = suggested.split(',').map(s => s.trim()).filter(Boolean);
+  return [...new Set([...a,...b])].join(', ');
+}
+
+window.acceptContribution = async function(id) {
+  const c = reviewContribsMap[id];
+  if (!c) return;
+  const photo = c.mk_photos;
+  const localPhoto = photoLibrary.find(p => p.fileName === photo?.file_name);
+  if (!localPhoto) {
+    alert(`"${photo?.file_name}" not found in the current folder. Make sure the right folder is open.`);
+    return;
+  }
+  const ex = readMeta(localPhoto.id);
+  const merged = { ...ex };
+  if (c.memory_note) {
+    merged.memoryNote = ex.memoryNote
+      ? ex.memoryNote + '\n\n— ' + c.contributor_name + ':\n' + c.memory_note
+      : '— ' + c.contributor_name + ':\n' + c.memory_note;
+  }
+  if (c.suggested_people)   merged.people          = ex.people ? mergeCommaList(ex.people, c.suggested_people) : c.suggested_people;
+  if (c.suggested_date && !ex.approximateDate) merged.approximateDate = c.suggested_date;
+  if (c.suggested_location && !ex.location)   merged.location        = c.suggested_location;
+  if (c.suggested_tags)     merged.tags            = ex.tags   ? mergeCommaList(ex.tags,   c.suggested_tags)   : c.suggested_tags;
+  writeMeta(localPhoto.id, merged);
+  await db().from('mk_contributions').update({ status:'accepted' }).eq('id', id);
+  setRvStatus(id, '✓ Accepted');
+};
+
+window.rejectContribution = async function(id) {
+  await db().from('mk_contributions').update({ status:'rejected' }).eq('id', id);
+  setRvStatus(id, '✗ Rejected');
+};
+
+function setRvStatus(id, msg) {
+  document.getElementById('rv-accept-' + id)?.setAttribute('disabled', true);
+  document.getElementById('rv-reject-' + id)?.setAttribute('disabled', true);
+  const s = document.getElementById('rv-status-' + id);
+  if (s) s.textContent = msg;
+  const card = document.getElementById('rv-' + id);
+  if (card) setTimeout(() => {
+    card.style.transition = 'opacity .4s';
+    card.style.opacity    = '0';
+    setTimeout(() => card.remove(), 420);
+  }, 900);
+}
+
+// ════════════════════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Escape') {
+    if (document.getElementById('zoom-overlay').classList.contains('open'))   { closeZoom();          e.preventDefault(); }
+    else if (document.getElementById('help-overlay').classList.contains('open'))   { window.closeHelp(); e.preventDefault(); }
+    else if (document.getElementById('share-overlay').classList.contains('open'))  { window.closeShareModal(); e.preventDefault(); }
+    else if (document.getElementById('review-overlay').classList.contains('open')) { window.closeReviewModal(); e.preventDefault(); }
+    return;
+  }
+  if (e.key === '?') { window.openHelp(); e.preventDefault(); return; }
+  if (document.getElementById('screen-review').style.display === 'none') return;
+  switch (e.key) {
+    case 'ArrowRight': case ' ': e.preventDefault(); window.doSkip(); break;
+    case 'ArrowLeft':  e.preventDefault(); window.doSkipBack(); break;
+    case 's': case 'S': e.preventDefault(); window.doSaveAndNext(); break;
+    case 'f': case 'F': if (state.currentId && state.view==='single') window.doAction('favorite'); break;
+    case 'b': case 'B': if (state.currentId && state.view==='single') window.doAction('bestshot'); break;
+    case 'h': case 'H': if (state.currentId && state.view==='single') window.doAction('hide'); break;
+    case 'g': case 'G': window.setView(state.view==='gallery'?'single':'gallery'); break;
+    case 'z': case 'Z':
+      if (state.currentId && state.view==='single') {
+        const p = photoLibrary.find(x => x.id === state.currentId);
+        if (p) window.openZoom(p.filePath);
+      }
+      break;
+  }
+});
+
+init();
+</script>
+</body>
+</html>

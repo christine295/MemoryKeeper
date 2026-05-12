@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Family Memories — MemoryKeeper</title>
+  <style>
+    :root {
+      --bg:#faf6f0; --card:#ffffff; --header:#4e3527; --accent:#c0693e;
+      --text:#3a2718; --text-mid:#7a6050; --text-light:#a89080;
+      --border:#e6dad0; --radius:14px; --radius-sm:8px;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:Georgia,'Times New Roman',serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    header { background:var(--header); color:#f4ebe0; padding:14px 24px 13px; border-bottom:3px solid var(--accent); }
+    .header-inner { max-width:960px; margin:0 auto; display:flex; align-items:center; gap:14px; }
+    .header-icon { font-size:2rem; line-height:1; opacity:.85; }
+    header h1 { font-size:1.3rem; font-weight:normal; }
+    .tagline { font-size:.8rem; opacity:.7; margin-top:2px; }
+
+    .cv-main { max-width:960px; margin:24px auto; padding:0 16px 48px; }
+    .cv-loading { text-align:center; padding:80px 32px; font-family:system-ui,sans-serif; color:var(--text-mid); }
+    .cv-hint { text-align:center; font-family:system-ui,sans-serif; font-size:.82rem; color:var(--text-light); margin-bottom:18px; }
+    .cv-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; }
+    .cv-photo { position:relative; aspect-ratio:1; border-radius:var(--radius-sm); overflow:hidden; cursor:pointer; background:#1a100a; border:2px solid transparent; transition:border-color .15s,transform .12s; }
+    .cv-photo:hover { border-color:var(--accent); transform:scale(1.02); }
+    .cv-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+    .cv-photo-meta { position:absolute; bottom:0; left:0; right:0; padding:20px 8px 6px; background:linear-gradient(transparent,rgba(0,0,0,.6)); font-family:system-ui,sans-serif; font-size:.68rem; color:rgba(255,255,255,.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    #contrib-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1200; display:none; align-items:center; justify-content:center; padding:16px; overflow-y:auto; }
+    #contrib-overlay.open { display:flex; }
+    .contrib-modal { background:var(--card); border-radius:var(--radius); box-shadow:0 8px 60px rgba(0,0,0,.5); width:100%; max-width:540px; overflow:hidden; flex-shrink:0; }
+    .contrib-photo-frame { width:100%; max-height:220px; background:#1a100a; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+    .contrib-photo-frame img { max-width:100%; max-height:220px; object-fit:contain; display:block; }
+    .cv-known-meta { background:var(--bg); border-radius:var(--radius-sm); padding:10px 14px; margin:12px 16px 0; font-family:system-ui,sans-serif; font-size:.83rem; }
+    .cv-known-meta h4 { margin:0 0 6px; font-size:.75rem; font-weight:700; color:var(--text-light); text-transform:uppercase; letter-spacing:.05em; }
+    .cv-known-meta dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:3px 10px; }
+    .cv-known-meta dt { font-weight:600; color:var(--text-mid); white-space:nowrap; }
+    .cv-known-meta dd { margin:0; color:var(--text); word-break:break-word; }
+    .contrib-form-body { padding:18px 20px 4px; }
+    .contrib-form-body h3 { font-family:system-ui,sans-serif; font-size:.95rem; font-weight:600; color:var(--text-mid); margin-bottom:14px; }
+    .contrib-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+    .contrib-row.full { grid-template-columns:1fr; }
+    .contrib-field { display:flex; flex-direction:column; gap:4px; }
+    .contrib-field label { font-family:system-ui,sans-serif; font-size:.68rem; font-weight:700; color:var(--text-mid); text-transform:uppercase; letter-spacing:.07em; }
+    .contrib-required::after { content:' *'; color:var(--accent); }
+    .contrib-field input, .contrib-field textarea { font-family:Georgia,serif; font-size:.88rem; padding:7px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); outline:none; width:100%; transition:border-color .15s; }
+    .contrib-field input:focus, .contrib-field textarea:focus { border-color:var(--accent); background:#fff; }
+    .contrib-field textarea { min-height:72px; resize:vertical; line-height:1.5; }
+    .contrib-actions { display:flex; align-items:center; gap:10px; padding:12px 20px 16px; border-top:1px solid var(--border); margin-top:12px; }
+    .contrib-submit { font-family:system-ui,sans-serif; font-size:.9rem; font-weight:600; padding:9px 22px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; transition:filter .15s; }
+    .contrib-submit:hover { filter:brightness(1.1); }
+    .contrib-submit:disabled { opacity:.5; cursor:not-allowed; filter:none; }
+    .contrib-cancel { font-family:system-ui,sans-serif; font-size:.82rem; color:var(--text-light); background:none; border:none; cursor:pointer; padding:0 6px; }
+    .contrib-cancel:hover { color:var(--text); }
+    .contrib-dl { margin-left:auto; font-family:system-ui,sans-serif; font-size:.8rem; font-weight:600; padding:7px 14px; background:var(--bg); color:var(--text-mid); border:1px solid var(--border); border-radius:var(--radius-sm); text-decoration:none; }
+    .contrib-dl:hover { border-color:var(--accent); color:var(--accent); }
+    .contrib-success { display:none; text-align:center; padding:40px 24px; font-family:system-ui,sans-serif; }
+    .contrib-success-icon { font-size:2.8rem; margin-bottom:10px; }
+    .contrib-success h3 { font-size:1.1rem; margin-bottom:8px; }
+    .contrib-success p { font-size:.86rem; color:var(--text-mid); line-height:1.65; }
+
+    .cu-section { max-width:960px; margin:0 auto 48px; padding:0 16px; font-family:system-ui,sans-serif; border-top:2px solid var(--border); padding-top:32px; }
+    .cu-section h2 { font-size:1rem; font-weight:700; color:var(--text); margin:0 0 6px; }
+    .cu-hint-sub { font-size:.84rem; color:var(--text-mid); margin-bottom:18px; }
+    .cu-row { display:flex; gap:12px; margin-bottom:12px; }
+    .cu-field { flex:1; display:flex; flex-direction:column; gap:4px; font-size:.83rem; font-weight:600; color:var(--text-mid); }
+    .cu-field input { padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-family:inherit; font-size:.85rem; outline:none; }
+    .cu-field input:focus { border-color:var(--accent); background:#fff; }
+    .cu-field-full { margin-bottom:12px; }
+    .cu-drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:2px dashed var(--border); border-radius:var(--radius-sm); padding:28px 16px; text-align:center; cursor:pointer; color:var(--text-mid); font-size:.86rem; transition:border-color .15s; margin-bottom:12px; }
+    .cu-drop:hover { border-color:var(--accent); color:var(--accent); }
+    .cu-preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:8px; margin-bottom:14px; }
+    .cu-preview-item { aspect-ratio:1; border-radius:6px; overflow:hidden; position:relative; background:var(--bg); }
+    .cu-preview-item img { width:100%; height:100%; object-fit:cover; }
+    .cu-preview-remove { position:absolute; top:3px; right:3px; background:rgba(0,0,0,.65); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .cu-prog-text { font-size:.82rem; color:var(--text-mid); margin-bottom:4px; }
+    .cu-prog-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:14px; }
+    .cu-prog-fill { height:100%; background:var(--accent); width:0%; transition:width .2s; }
+
+    @media (max-width:600px) {
+      .cv-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); }
+      .contrib-row { grid-template-columns:1fr; }
+      .cu-row { flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-icon">&#128247;</div>
+    <div style="flex:1">
+      <h1 id="cv-title">Family Memories</h1>
+      <div class="tagline" id="cv-desc"></div>
+    </div>
+  </div>
+</header>
+
+<div class="cv-main">
+  <div id="cv-content"><div class="cv-loading">Loading collection&#8230;</div></div>
+</div>
+
+<div class="cu-section" id="cu-section" style="display:none">
+  <h2>&#128247; Share Your Own Photos</h2>
+  <p class="cu-hint-sub">Have photos related to this collection? Upload them here and the Memory Keeper will review them.</p>
+  <div id="cu-form">
+    <div class="cu-row">
+      <div class="cu-field">
+        <label class="contrib-required">Your name</label>
+        <input type="text" id="cu-name" placeholder="e.g. Aunt Carol" autocomplete="name" />
+      </div>
+      <div class="cu-field">
+        <label class="contrib-required">Your email</label>
+        <input type="email" id="cu-email" placeholder="you@example.com" autocomplete="email" />
+      </div>
+    </div>
+    <div class="cu-field cu-field-full">
+      <label>Note (optional)</label>
+      <input type="text" id="cu-note" placeholder="e.g. Found these in Grandma&#39;s attic" />
+    </div>
+    <div class="cu-drop" onclick="document.getElementById('cu-files').click()">
+      <div style="font-size:2rem">&#128247;</div>
+      <div>Click to select photos</div>
+      <div style="font-size:.76rem;color:var(--text-light)">JPG, PNG, HEIC and more — multiple OK</div>
+      <input type="file" id="cu-files" multiple accept="image/*" onchange="cuHandleFiles(this.files)" style="display:none" />
+    </div>
+    <div id="cu-preview-grid" class="cu-preview-grid"></div>
+    <div id="cu-prog-wrap" style="display:none">
+      <div class="cu-prog-text" id="cu-prog-text">Uploading&#8230;</div>
+      <div class="cu-prog-bar"><div class="cu-prog-fill" id="cu-prog-fill"></div></div>
+    </div>
+    <button class="contrib-submit" id="cu-submit-btn" onclick="cuSubmit()" style="display:none">&#8679; Upload Photos</button>
+  </div>
+  <div class="contrib-success" id="cu-success" style="display:none">
+    <div class="contrib-success-icon">&#10003;</div>
+    <h3>Photos uploaded!</h3>
+    <p>The Memory Keeper will review your photos soon.</p>
+    <button class="contrib-cancel" onclick="cuReset()" style="margin-top:16px;color:var(--accent)">Upload more</button>
+  </div>
+</div>
+
+<div id="contrib-overlay" onclick="if(event.target===this)closeContribForm()">
+  <div class="contrib-modal">
+    <div class="contrib-photo-frame"><img id="contrib-img" src="" alt="Photo" /></div>
+    <div id="cv-known-meta" class="cv-known-meta" style="display:none">
+      <h4>What we already know</h4>
+      <div id="cv-known-meta-body"></div>
+    </div>
+    <div id="contrib-form-wrap">
+      <div class="contrib-form-body">
+        <h3>Add your memory to this photo</h3>
+        <div class="contrib-row">
+          <div class="contrib-field">
+            <label class="contrib-required">Your name</label>
+            <input type="text" id="cf-name" placeholder="e.g. Aunt Carol" autocomplete="name" />
+          </div>
+          <div class="contrib-field">
+            <label class="contrib-required">Your email</label>
+            <input type="email" id="cf-email" placeholder="you@example.com" autocomplete="email" />
+          </div>
+        </div>
+        <div class="contrib-row full">
+          <div class="contrib-field">
+            <label>Memory or story</label>
+            <textarea id="cf-note" placeholder="Share what you remember about this photo&#8230;"></textarea>
+          </div>
+        </div>
+        <div class="contrib-row">
+          <div class="contrib-field">
+            <label>People in photo</label>
+            <input type="text" id="cf-people" placeholder="e.g. Grandma Rose, Uncle Mike" />
+          </div>
+          <div class="contrib-field">
+            <label>Approximate date</label>
+            <input type="text" id="cf-date" placeholder="e.g. Summer 1994" />
+          </div>
+        </div>
+        <div class="contrib-row">
+          <div class="contrib-field">
+            <label>Location</label>
+            <input type="text" id="cf-location" placeholder="e.g. Grandma&#39;s house" />
+          </div>
+          <div class="contrib-field">
+            <label>Tags</label>
+            <input type="text" id="cf-tags" placeholder="e.g. reunion, funny" />
+          </div>
+        </div>
+      </div>
+      <div class="contrib-actions">
+        <button class="contrib-submit" id="contrib-submit-btn" onclick="submitContribution()">Submit Memory</button>
+        <button class="contrib-cancel" onclick="closeContribForm()">Cancel</button>
+        <a id="contrib-dl-btn" class="contrib-dl" style="display:none" download>&#8681; Download</a>
+      </div>
+    </div>
+    <div class="contrib-success" id="contrib-success">
+      <div class="contrib-success-icon">&#10003;</div>
+      <h3>Thank you!</h3>
+      <p>Your memory has been submitted.<br/>The Memory Keeper will review it soon.</p>
+      <button class="contrib-cancel" onclick="closeContribForm()" style="margin-top:16px;color:var(--accent)">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPA_URL = "https://ebungmhgfyawhnnqykmd.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVidW5nbWhnZnlhd2hubnF5a21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0OTQ2OTgsImV4cCI6MjA5NDA3MDY5OH0.P6sKZfGtSrpFWJTNkaRhb8Fwb_7uUP_PVqq5ww8WhFU";
+let _supa = null;
+function db() {
+  if (!_supa) _supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  return _supa;
+}
+function esc(s) {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function resizeToBlob(file, maxPx = 1200, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const obj = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(obj);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/jpeg", quality);
+    };
+    img.onerror = reject;
+    img.src = obj;
+  });
+}
+
+// ── Contributor view ──────────────────────────────────────────
+let cvPhotos = {}, cvAllowDownloads = false, cvCurrentPhoto = null;
+
+async function startContributorView(token) {
+  const { data: col, error } = await db().from("mk_collections")
+    .select("*").eq("share_token", token).single();
+
+  if (error || !col) {
+    document.getElementById("cv-content").innerHTML =
+      "<div class='cv-loading'>&#10007; This share link is invalid or has expired.</div>";
+    return;
+  }
+
+  document.getElementById("cv-title").textContent = col.title;
+  if (col.description) document.getElementById("cv-desc").textContent = col.description;
+  cvAllowDownloads = col.allow_downloads;
+  cuCollectionId = col.id;
+  document.getElementById("cu-section").style.display = "block";
+
+  const { data: photos } = await db().from("mk_photos")
+    .select("*").eq("collection_id", col.id).order("sort_order");
+
+  renderCvGallery(photos || []);
+}
+
+function renderCvGallery(photos) {
+  if (!photos.length) {
+    document.getElementById("cv-content").innerHTML =
+      "<div class='cv-loading'>No photos in this collection yet.</div>";
+    return;
+  }
+  cvPhotos = {};
+  photos.forEach(p => { cvPhotos[p.id] = p; });
+  const items = photos.map(p => {
+    const meta = [p.people, p.approximate_date, p.location].filter(Boolean).join(" · ");
+    return `<div class="cv-photo" onclick="openContribForm('${esc(p.id)}')" title="${esc(p.file_name)}">
+      <img src="${esc(p.preview_url)}" alt="${esc(p.file_name)}" loading="lazy" />
+      ${meta ? `<div class="cv-photo-meta">${esc(meta)}</div>` : ""}
+    </div>`;
+  }).join("");
+  document.getElementById("cv-content").innerHTML =
+    `<p class="cv-hint">Click any photo to share a memory or help identify people, places, and dates.</p>
+     <div class="cv-grid">${items}</div>`;
+}
+
+function openContribForm(photoId) {
+  cvCurrentPhoto = cvPhotos[photoId];
+  if (!cvCurrentPhoto) return;
+  document.getElementById("contrib-img").src = cvCurrentPhoto.preview_url;
+  document.getElementById("contrib-form-wrap").style.display = "";
+  document.getElementById("contrib-success").style.display   = "none";
+  document.getElementById("contrib-submit-btn").disabled     = false;
+  ["cf-name","cf-email","cf-note","cf-people","cf-date","cf-location","cf-tags"]
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+
+  const knownFields = [
+    ["People",   cvCurrentPhoto.people],
+    ["Date",     cvCurrentPhoto.approximate_date],
+    ["Location", cvCurrentPhoto.location],
+    ["Event",    cvCurrentPhoto.holiday_event],
+    ["Tags",     cvCurrentPhoto.tags],
+    ["Note",     cvCurrentPhoto.memory_note],
+  ].filter(([, v]) => v);
+  const metaEl = document.getElementById("cv-known-meta");
+  if (knownFields.length) {
+    document.getElementById("cv-known-meta-body").innerHTML =
+      "<dl>" + knownFields.map(([k,v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("") + "</dl>";
+    metaEl.style.display = "block";
+  } else {
+    metaEl.style.display = "none";
+  }
+
+  const dl = document.getElementById("contrib-dl-btn");
+  if (dl) {
+    if (cvAllowDownloads) {
+      dl.href = cvCurrentPhoto.preview_url;
+      dl.download = cvCurrentPhoto.file_name;
+      dl.style.display = "";
+    } else {
+      dl.style.display = "none";
+    }
+  }
+  document.getElementById("contrib-overlay").classList.add("open");
+}
+
+function closeContribForm() {
+  document.getElementById("contrib-overlay").classList.remove("open");
+  cvCurrentPhoto = null;
+}
+
+async function submitContribution() {
+  const name  = document.getElementById("cf-name")?.value.trim();
+  const email = document.getElementById("cf-email")?.value.trim();
+  if (!name)  { document.getElementById("cf-name").focus();  return; }
+  if (!email || !email.includes("@")) { document.getElementById("cf-email").focus(); return; }
+  if (!cvCurrentPhoto) return;
+  document.getElementById("contrib-submit-btn").disabled = true;
+  const { error } = await db().from("mk_contributions").insert({
+    photo_id:          cvCurrentPhoto.id,
+    collection_id:     cvCurrentPhoto.collection_id,
+    contributor_name:  name,
+    contributor_email: email,
+    memory_note:       document.getElementById("cf-note")?.value.trim()     || "",
+    suggested_people:  document.getElementById("cf-people")?.value.trim()   || "",
+    suggested_date:    document.getElementById("cf-date")?.value.trim()     || "",
+    suggested_location:document.getElementById("cf-location")?.value.trim() || "",
+    suggested_tags:    document.getElementById("cf-tags")?.value.trim()     || "",
+  });
+  if (error) {
+    alert("Failed to submit: " + error.message);
+    document.getElementById("contrib-submit-btn").disabled = false;
+    return;
+  }
+  document.getElementById("contrib-form-wrap").style.display = "none";
+  document.getElementById("contrib-success").style.display   = "block";
+}
+
+// ── Contributor uploads ───────────────────────────────────────
+let cuFiles = [], cuCollectionId = null;
+
+function cuHandleFiles(fileList) {
+  cuFiles = [...cuFiles, ...Array.from(fileList).filter(f => f.type.startsWith("image/"))];
+  cuRenderPreviews();
+  document.getElementById("cu-submit-btn").style.display = cuFiles.length ? "block" : "none";
+}
+function cuRemoveFile(index) {
+  cuFiles.splice(index, 1);
+  cuRenderPreviews();
+  document.getElementById("cu-submit-btn").style.display = cuFiles.length ? "block" : "none";
+}
+function cuRenderPreviews() {
+  document.getElementById("cu-preview-grid").innerHTML = cuFiles.map((f, i) =>
+    `<div class="cu-preview-item">
+      <img src="${URL.createObjectURL(f)}" alt="${esc(f.name)}" />
+      <button class="cu-preview-remove" onclick="cuRemoveFile(${i})">&#10005;</button>
+    </div>`
+  ).join("");
+}
+function cuReset() {
+  cuFiles = [];
+  document.getElementById("cu-preview-grid").innerHTML = "";
+  document.getElementById("cu-files").value = "";
+  document.getElementById("cu-submit-btn").style.display = "none";
+  document.getElementById("cu-success").style.display   = "none";
+  document.getElementById("cu-form").style.display      = "block";
+}
+async function cuSubmit() {
+  const name  = document.getElementById("cu-name")?.value.trim();
+  const email = document.getElementById("cu-email")?.value.trim();
+  if (!name)                          { document.getElementById("cu-name").focus();  return; }
+  if (!email || !email.includes("@")) { document.getElementById("cu-email").focus(); return; }
+  if (!cuFiles.length || !cuCollectionId) return;
+  const btn  = document.getElementById("cu-submit-btn");
+  const note = document.getElementById("cu-note")?.value.trim() || "";
+  btn.disabled = true;
+  document.getElementById("cu-prog-wrap").style.display = "block";
+  const total = cuFiles.length;
+  let failures = 0;
+  for (let i = 0; i < total; i++) {
+    document.getElementById("cu-prog-fill").style.width = Math.round((i / total) * 100) + "%";
+    document.getElementById("cu-prog-text").textContent = `Uploading ${i + 1} of ${total}…`;
+    try {
+      const file = cuFiles[i];
+      const blob = await resizeToBlob(file);
+      const pid  = crypto.randomUUID();
+      const path = `contributed/${cuCollectionId}/${pid}.jpg`;
+      const { error: upErr } = await db().storage
+        .from("previews").upload(path, blob, { contentType:"image/jpeg", upsert:true });
+      if (upErr) throw upErr;
+      const { data:{ publicUrl } } = db().storage.from("previews").getPublicUrl(path);
+      const { error: dbErr } = await db().from("mk_uploads").insert({
+        collection_id:cuCollectionId, contributor_name:name,
+        contributor_email:email, file_name:file.name,
+        storage_path:path, preview_url:publicUrl, note
+      });
+      if (dbErr) throw dbErr;
+    } catch(e) { console.warn("Upload failed:", e); failures++; }
+  }
+  document.getElementById("cu-prog-fill").style.width  = "100%";
+  document.getElementById("cu-prog-wrap").style.display = "none";
+  btn.disabled = false;
+  if (failures === total) { alert("All uploads failed. Please try again."); return; }
+  document.getElementById("cu-form").style.display    = "none";
+  document.getElementById("cu-success").style.display = "block";
+  cuFiles = [];
+}
+
+// ── Init ──────────────────────────────────────────────────────
+const token = new URLSearchParams(location.search).get("share");
+if (token) startContributorView(token);
+else document.getElementById("cv-content").innerHTML =
+  "<div class='cv-loading'>No share token found in this URL.</div>";
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.getElementById("contrib-overlay").classList.contains("open")) {
+    closeContribForm(); e.preventDefault();
+  }
+});
+</script>
+</body>
+</html>
