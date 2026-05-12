@@ -1472,7 +1472,7 @@ async function uploadSharedPhoto(collectionId, sortOrder, photo) {
   const photoId = crypto.randomUUID();
   const path    = `${collectionId}/${photoId}.jpg`;
 
-  const { error:upErr } = await db().storage.from('previews').upload(path, blob, { contentType:'image/jpeg', upsert:true });
+  const { error:upErr } = await db().storage.from('previews').upload(path, blob, { contentType:'image/jpeg' });
   if (upErr) throw upErr;
 
   const { data:{ publicUrl } } = db().storage.from('previews').getPublicUrl(path);
