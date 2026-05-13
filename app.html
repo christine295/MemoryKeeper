@@ -310,7 +310,7 @@
       <h1>MemoryKeeper</h1>
       <div class="tagline" id="hdr-tagline">Loading&hellip;</div>
     </div>
-    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.5</span>
+    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.6</span>
     <button class="hdr-btn" onclick="openHelp()">&#8505; Help</button>
     <button class="hdr-btn" id="btn-share"  style="display:none" onclick="openShareModal()">&#127760; Share</button>
     <button class="hdr-btn" id="btn-review" style="display:none" onclick="openReviewModal()">&#128228; Contributions</button>
@@ -894,6 +894,7 @@ function enterReviewMode() {
   state.queue = buildFreshQueue();
   render();
   computeAllHashes();
+  updateContribBadge();
 }
 
 window.doSignOut = async function() {
