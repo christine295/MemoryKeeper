@@ -310,7 +310,7 @@
       <h1>MemoryKeeper</h1>
       <div class="tagline" id="hdr-tagline">Loading&hellip;</div>
     </div>
-    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.4</span>
+    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.5</span>
     <button class="hdr-btn" onclick="openHelp()">&#8505; Help</button>
     <button class="hdr-btn" id="btn-share"  style="display:none" onclick="openShareModal()">&#127760; Share</button>
     <button class="hdr-btn" id="btn-review" style="display:none" onclick="openReviewModal()">&#128228; Contributions</button>
@@ -790,7 +790,7 @@ window.openArchive = function(id, name) {
 };
 
 async function updateContribBadge() {
-  const { data: cols } = await db().from('mk_collections').select('id').eq('archive_id', currentArchiveId);
+  const { data: cols } = await db().from('mk_collections').select('id').eq('archive_id', currentArchiveId).eq('title', folderName);
   if (!cols?.length) return;
   const colIds = cols.map(c => c.id);
   const [{ count: c1 }, { count: c2 }] = await Promise.all([
@@ -1755,7 +1755,7 @@ window.openReviewModal = async function() {
   reviewContribsMap = {};
 
   const { data:cols } = await db().from('mk_collections')
-    .select('id, title, created_at').eq('archive_id', currentArchiveId);
+    .select('id, title, created_at').eq('archive_id', currentArchiveId).eq('title', folderName);
 
   if (!cols?.length) {
     document.getElementById('review-body').innerHTML =
