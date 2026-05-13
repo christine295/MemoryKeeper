@@ -300,7 +300,7 @@
       <h1>MemoryKeeper</h1>
       <div class="tagline" id="hdr-tagline">Loading&hellip;</div>
     </div>
-    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v1.9</span>
+    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.0</span>
     <button class="hdr-btn" onclick="openHelp()">&#8505; Help</button>
     <button class="hdr-btn" id="btn-share"  style="display:none" onclick="openShareModal()">&#127760; Share</button>
     <button class="hdr-btn" id="btn-review" style="display:none" onclick="openReviewModal()">&#128228; Contributions</button>
@@ -1353,28 +1353,23 @@ function updateBadge() {
 
 window.doSaveAndNext = function() {
   const id = state.currentId;
-  const dbg = document.getElementById('dbg-banner');
-  const show = msg => { if (dbg) { dbg.textContent = msg; dbg.style.display = 'block'; setTimeout(() => dbg.style.display = 'none', 5000); } };
-  show('step1: id=' + (id || 'NULL'));
   if (!id) return;
-  try {
-    const existing = readMeta(id);
-    const fields = collectFields();
-    writeMeta(id, { ...fields, status:existing.status==='unreviewed'?'kept':existing.status,
-                    favorite:existing.favorite, reviewedDate:existing.reviewedDate ?? new Date().toISOString() });
-    const flash = document.getElementById('saved-flash');
-    if (flash) { flash.classList.add('show'); setTimeout(() => flash.classList.remove('show'), 1600); }
-    const qBefore = state.queue.length;
-    const idxBefore = state.queueIdx;
-    advance();
-    show('mode=' + state.mode + ' qBefore=' + qBefore + ' idxBefore=' + idxBefore + ' qAfter=' + state.queue.length + ' idxAfter=' + state.queueIdx + ' newId=' + (state.currentId || 'null'));
-  } catch(e) {
-    show('ERROR: ' + e.message);
-  }
+  const existing = readMeta(id);
+  writeMeta(id, { ...collectFields(), status:existing.status==='unreviewed'?'kept':existing.status,
+                  favorite:existing.favorite, reviewedDate:existing.reviewedDate ?? new Date().toISOString() });
+  const flash = document.getElementById('saved-flash');
+  if (flash) { flash.classList.add('show'); setTimeout(() => flash.classList.remove('show'), 1600); }
+  advance();
 };
 
 function advance() {
+  const currentId = state.queue[state.queueIdx];
   state.queue = state.queue.filter(id => qualifies(id));
+  const stillAt = state.queue.indexOf(currentId);
+  if (stillAt !== -1) {
+    // photo still qualifies — explicitly step past it
+    state.queueIdx = (stillAt + 1) % state.queue.length;
+  }
   if (state.queueIdx >= state.queue.length) state.queueIdx = Math.max(0, state.queue.length - 1);
   render();
 }
