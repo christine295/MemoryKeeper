@@ -310,7 +310,7 @@
       <h1>MemoryKeeper</h1>
       <div class="tagline" id="hdr-tagline">Loading&hellip;</div>
     </div>
-    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.3</span>
+    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.4</span>
     <button class="hdr-btn" onclick="openHelp()">&#8505; Help</button>
     <button class="hdr-btn" id="btn-share"  style="display:none" onclick="openShareModal()">&#127760; Share</button>
     <button class="hdr-btn" id="btn-review" style="display:none" onclick="openReviewModal()">&#128228; Contributions</button>
@@ -827,16 +827,41 @@ async function showPickerScreen() {
   document.getElementById('picker-archive-chip').innerHTML  = '&#128247; ' + esc(currentArchiveName);
   document.getElementById('picker-archive-chip2').innerHTML = '&#128247; ' + esc(currentArchiveName);
 
-  const recent = await getRecentFolders();
+  const [recent, { data: cols }] = await Promise.all([
+    getRecentFolders(),
+    db().from('mk_collections').select('id, title').eq('archive_id', currentArchiveId)
+  ]);
+
+  // Build pending count per folder name (collection title matches folderName set at share time)
+  const pendingByFolder = {};
+  if (cols?.length) {
+    const colIds = cols.map(c => c.id);
+    const [{ data: contribs }, { data: uploads }] = await Promise.all([
+      db().from('mk_contributions').select('collection_id').in('collection_id', colIds).eq('status', 'pending'),
+      db().from('mk_uploads').select('collection_id').in('collection_id', colIds)
+    ]);
+    const pendingMap = {};
+    [...(contribs||[]), ...(uploads||[])].forEach(r => {
+      pendingMap[r.collection_id] = (pendingMap[r.collection_id] || 0) + 1;
+    });
+    cols.forEach(c => {
+      if (pendingMap[c.id]) pendingByFolder[c.title] = (pendingByFolder[c.title] || 0) + pendingMap[c.id];
+    });
+  }
+
   if (recent.length) {
     const list = document.getElementById('recent-list');
-    list.innerHTML = recent.map(r => `
+    list.innerHTML = recent.map(r => {
+      const n = pendingByFolder[r.folderName] || 0;
+      return `
       <div class="recent-item">
         <div class="recent-item-header">
           <span class="recent-folder-name">&#128193; ${esc(r.folderName)}</span>
+          ${n > 0 ? `<span class="pending-badge">&#128228; ${n} pending</span>` : ''}
           <button class="btn-open-sm" onclick="reopenSpecific('${esc(r.folderName)}')">Open</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     showPickerState('state-reopen');
   } else {
     showPickerState('state-open');
