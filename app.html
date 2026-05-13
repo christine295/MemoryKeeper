@@ -122,6 +122,10 @@
     .photo-frame img { max-width:100%; max-height:560px; object-fit:contain; display:block; }
     .photo-missing { display:flex; flex-direction:column; align-items:center; gap:14px; padding:52px 32px; text-align:center; color:#7a5c40; }
     .photo-missing p { font-family:system-ui,sans-serif; font-size:.82rem; color:#8a6848; line-height:1.7; }
+    .photo-nav { position:absolute; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.35); color:#fff; border:none; border-radius:50%; width:42px; height:42px; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s; z-index:5; }
+    .photo-nav:hover { background:rgba(0,0,0,.6); }
+    .photo-nav-left  { left:10px; }
+    .photo-nav-right { right:10px; }
     .badge { position:absolute; top:10px; right:10px; padding:3px 10px; border-radius:14px; font-family:system-ui,sans-serif; font-size:.65rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
     .badge-favorite  { background:rgba(184,126,16,.85); color:#fff; }
     .badge-bestshot  { background:rgba(114,68,176,.85); color:#fff; }
@@ -1184,14 +1188,14 @@ function renderCard(id) {
       <p>Could not load:<br/><code>${esc(photo.fileName)}</code></p>
     </div>
     <span class="badge ${badgeClass(m)}">${badgeText(m)}</span>
+    <button class="photo-nav photo-nav-left"  onclick="doSkipBack()" title="Back">&#8592;</button>
+    <button class="photo-nav photo-nav-right" onclick="doSkip()"     title="Next">&#8594;</button>
   </div>
   <div class="actions">
     <button class="btn btn-bestshot ${m.bestShot?'btn-on':''}" onclick="doAction('bestshot')">&#9670; Best Shot</button>
     <button class="btn btn-fav ${m.favorite?'btn-on':''}"      onclick="doAction('favorite')">&#9733; Favorite</button>
     <button class="btn btn-hide"  onclick="doAction('hide')">${m.status==='hidden'?'&#9679; Unhide':'&#9675; Hide'}</button>
     <button class="btn btn-del"   onclick="doAction('delete')">&#10005; Delete (App Only)</button>
-    <button class="btn btn-skip"  onclick="doSkipBack()">&#8592; Back</button>
-    <button class="btn btn-skip"  onclick="doSkip()">&#8594; Next</button>
     <button class="btn btn-save"  onclick="doSaveAndNext()">Save &amp; Next</button>
   </div>
   <div class="meta-grid">
