@@ -1359,16 +1359,15 @@ window.doSaveAndNext = function() {
   if (!id) return;
   try {
     const existing = readMeta(id);
-    show('step2: readMeta ok, status=' + existing.status);
     const fields = collectFields();
-    show('step3: collectFields ok');
     writeMeta(id, { ...fields, status:existing.status==='unreviewed'?'kept':existing.status,
                     favorite:existing.favorite, reviewedDate:existing.reviewedDate ?? new Date().toISOString() });
-    show('step4: writeMeta ok');
     const flash = document.getElementById('saved-flash');
     if (flash) { flash.classList.add('show'); setTimeout(() => flash.classList.remove('show'), 1600); }
+    const qBefore = state.queue.length;
+    const idxBefore = state.queueIdx;
     advance();
-    show('step5: advance ok');
+    show('mode=' + state.mode + ' qBefore=' + qBefore + ' idxBefore=' + idxBefore + ' qAfter=' + state.queue.length + ' idxAfter=' + state.queueIdx + ' newId=' + (state.currentId || 'null'));
   } catch(e) {
     show('ERROR: ' + e.message);
   }
