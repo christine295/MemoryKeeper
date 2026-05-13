@@ -168,8 +168,14 @@
     .empty-state p { font-family:system-ui,sans-serif; font-size:.86rem; color:var(--text-light); line-height:1.7; }
 
     /* BULK BAR */
-    #bulk-bar { display:none; position:sticky; bottom:0; background:var(--header); border-top:2px solid var(--accent); z-index:20; padding:10px 20px; }
+    #bulk-bar { display:none; flex-direction:column; gap:6px; position:sticky; bottom:0; background:var(--header); border-top:2px solid var(--accent); z-index:20; padding:10px 20px; }
     .bulk-inner { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .bulk-field-row, .bulk-move-row { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:100%; }
+    .bulk-label { font-family:system-ui,sans-serif; font-size:.76rem; font-weight:600; color:#c8b0a0; white-space:nowrap; }
+    .bulk-select, .bulk-input { font-family:system-ui,sans-serif; font-size:.82rem; background:#3a2215; color:#f4ebe0; border:1px solid rgba(255,255,255,.35); border-radius:var(--radius-sm); padding:5px 9px; outline:none; }
+    .bulk-select:focus, .bulk-input:focus { border-color:#f4ebe0; }
+    .bulk-select option { background:#3a2215; color:#f4ebe0; }
+    .bulk-input { min-width:180px; }
     .bulk-count { font-family:system-ui,sans-serif; font-size:.85rem; font-weight:700; color:#f4ebe0; white-space:nowrap; }
     .bulk-btn { font-family:system-ui,sans-serif; font-size:.8rem; font-weight:600; padding:6px 14px; border:1px solid rgba(255,255,255,.25); border-radius:var(--radius-sm); background:rgba(255,255,255,.12); color:#f4ebe0; cursor:pointer; white-space:nowrap; transition:background .12s; }
     .bulk-btn:hover { background:rgba(255,255,255,.22); }
@@ -300,7 +306,7 @@
       <h1>MemoryKeeper</h1>
       <div class="tagline" id="hdr-tagline">Loading&hellip;</div>
     </div>
-    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.0</span>
+    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.1</span>
     <button class="hdr-btn" onclick="openHelp()">&#8505; Help</button>
     <button class="hdr-btn" id="btn-share"  style="display:none" onclick="openShareModal()">&#127760; Share</button>
     <button class="hdr-btn" id="btn-review" style="display:none" onclick="openReviewModal()">&#128228; Contributions</button>
@@ -441,6 +447,23 @@
       <button class="bulk-btn" onclick="bulkAction('review')">&#10003; Mark Kept</button>
       <button class="bulk-btn" id="bulk-share-btn" onclick="openShareModalForSelected()">&#127760; Share Selected</button>
       <button class="bulk-btn bulk-clear" onclick="clearSelection()">&#10005; Clear</button>
+    </div>
+    <div class="bulk-field-row">
+      <span class="bulk-label">Add to selected:</span>
+      <select id="bulk-field-sel" class="bulk-select">
+        <option value="people">People</option>
+        <option value="approximateDate">Date</option>
+        <option value="location">Location</option>
+        <option value="holidayEvent">Event</option>
+        <option value="tags">Tags</option>
+      </select>
+      <input type="text" id="bulk-field-val" class="bulk-input" placeholder="Value to append to all selected…" />
+      <button class="bulk-btn" onclick="bulkApplyField()">&#10003; Apply</button>
+    </div>
+    <div class="bulk-move-row" id="bulk-move-row" style="display:none">
+      <span class="bulk-label">Move to subfolder:</span>
+      <input type="text" id="bulk-subfolder" class="bulk-input" placeholder="Subfolder name" style="min-width:140px" />
+      <button class="bulk-btn" onclick="bulkMoveToSubfolder()">&#8594; Move Selected</button>
     </div>
   </div>
 </div>
@@ -1283,6 +1306,8 @@ function updateBulkBar() {
   bar.style.display = n > 0 && state.view === 'gallery' ? 'flex' : 'none';
   document.getElementById('bulk-count').textContent = n + ' selected';
   document.getElementById('btn-select-all').style.display = state.view === 'gallery' ? '' : 'none';
+  const moveRow = document.getElementById('bulk-move-row');
+  if (moveRow) moveRow.style.display = dirHandle ? 'flex' : 'none';
 }
 
 function updateSelectAllBtn() {
@@ -1307,6 +1332,50 @@ window.bulkAction = function(action) {
   persistMeta();
   clearSelection();
   render();
+};
+
+window.bulkApplyField = function() {
+  const field = document.getElementById('bulk-field-sel').value;
+  const val   = document.getElementById('bulk-field-val').value.trim();
+  if (!val) return;
+  selectedIds.forEach(id => {
+    const existing = readMeta(id);
+    const cur = (existing[field] || '').trim();
+    writeMeta(id, { ...existing, [field]: cur ? cur + ', ' + val : val });
+  });
+  document.getElementById('bulk-field-val').value = '';
+};
+
+window.bulkMoveToSubfolder = async function() {
+  if (!dirHandle) return;
+  const subfolderName = document.getElementById('bulk-subfolder').value.trim();
+  if (!subfolderName) { document.getElementById('bulk-subfolder').focus(); return; }
+  const ids = [...selectedIds];
+  if (!ids.length) return;
+  try {
+    const subDir = await dirHandle.getDirectoryHandle(subfolderName, { create:true });
+    for (const id of ids) {
+      const photo = photoLibrary.find(p => p.id === id);
+      if (!photo?._entry) continue;
+      try {
+        const file  = await photo._entry.getFile();
+        const buf   = await file.arrayBuffer();
+        const newFH = await subDir.getFileHandle(photo.fileName, { create:true });
+        const w     = await newFH.createWritable();
+        await w.write(buf); await w.close();
+        await dirHandle.removeEntry(photo.fileName);
+        if (photo._url) URL.revokeObjectURL(photo._url);
+        delete metaStore[photo.id];
+      } catch(e) { console.warn('Failed to move', photo?.fileName, e); }
+    }
+    persistMeta();
+    photoLibrary = photoLibrary.filter(p => !ids.includes(p.id));
+    state.queue  = state.queue.filter(id => !ids.includes(id));
+    if (state.queueIdx >= state.queue.length) state.queueIdx = Math.max(0, state.queue.length - 1);
+    document.getElementById('bulk-subfolder').value = '';
+    selectedIds.clear();
+    render();
+  } catch(e) { alert('Move failed: ' + e.message); }
 };
 
 // ════════════════════════════════════════════════════════════
