@@ -47,6 +47,7 @@
     .contrib-required::after { content:' *'; color:var(--accent); }
     .contrib-field input, .contrib-field textarea { font-family:Georgia,serif; font-size:.88rem; padding:7px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); outline:none; width:100%; transition:border-color .15s; }
     .contrib-field input:focus, .contrib-field textarea:focus { border-color:var(--accent); background:#fff; }
+    .contrib-field input::placeholder, .contrib-field textarea::placeholder { color:var(--text-light); opacity:.8; }
     .contrib-field textarea { min-height:72px; resize:vertical; line-height:1.5; }
     .contrib-actions { display:flex; align-items:center; gap:10px; padding:12px 20px 16px; border-top:1px solid var(--border); margin-top:12px; }
     .contrib-submit { font-family:system-ui,sans-serif; font-size:.9rem; font-weight:600; padding:9px 22px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; transition:filter .15s; }
@@ -68,6 +69,7 @@
     .cu-field { flex:1; display:flex; flex-direction:column; gap:4px; font-size:.83rem; font-weight:600; color:var(--text-mid); }
     .cu-field input { padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); font-family:inherit; font-size:.85rem; outline:none; }
     .cu-field input:focus { border-color:var(--accent); background:#fff; }
+    .cu-field input::placeholder { color:var(--text-light); opacity:.8; }
     .cu-field-full { margin-bottom:12px; }
     .cu-drop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:2px dashed var(--border); border-radius:var(--radius-sm); padding:28px 16px; text-align:center; cursor:pointer; color:var(--text-mid); font-size:.86rem; transition:border-color .15s; margin-bottom:12px; }
     .cu-drop:hover { border-color:var(--accent); color:var(--accent); }
@@ -78,6 +80,14 @@
     .cu-prog-text { font-size:.82rem; color:var(--text-mid); margin-bottom:4px; }
     .cu-prog-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:14px; }
     .cu-prog-fill { height:100%; background:var(--accent); width:0%; transition:width .2s; }
+
+    .cv-photo.done { border-color:#3a7a5a; }
+    .cv-done-badge { position:absolute; top:6px; right:6px; background:#3a7a5a; color:#fff; border-radius:20px; font-family:system-ui,sans-serif; font-size:.68rem; font-weight:700; padding:2px 8px; pointer-events:none; }
+    .contrib-nav { display:flex; gap:6px; margin-left:auto; }
+    .contrib-nav-btn { font-family:system-ui,sans-serif; font-size:.8rem; padding:6px 13px; background:var(--bg); color:var(--text-mid); border:1px solid var(--border); border-radius:var(--radius-sm); cursor:pointer; white-space:nowrap; }
+    .contrib-nav-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+    .contrib-nav-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .cv-counter { font-family:system-ui,sans-serif; font-size:.78rem; color:var(--text-light); text-align:center; padding:4px 20px 0; }
 
     @media (max-width:600px) {
       .cv-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); }
@@ -192,13 +202,21 @@
         <button class="contrib-submit" id="contrib-submit-btn" onclick="submitContribution()">Submit Memory</button>
         <button class="contrib-cancel" onclick="closeContribForm()">Cancel</button>
         <a id="contrib-dl-btn" class="contrib-dl" style="display:none" download>&#8681; Download</a>
+        <div class="contrib-nav">
+          <button class="contrib-nav-btn" id="cv-prev-btn" onclick="cvNavigate(-1)">&#8592; Prev</button>
+          <button class="contrib-nav-btn" id="cv-next-btn" onclick="cvNavigate(1)">Next &#8594;</button>
+        </div>
       </div>
+      <div class="cv-counter" id="cv-counter"></div>
     </div>
     <div class="contrib-success" id="contrib-success">
       <div class="contrib-success-icon">&#10003;</div>
       <h3>Thank you!</h3>
-      <p>Your memory has been submitted.<br/>The Memory Keeper will review it soon.</p>
-      <button class="contrib-cancel" onclick="closeContribForm()" style="margin-top:16px;color:var(--accent)">Close</button>
+      <p>Your memory has been submitted.</p>
+      <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="contrib-submit" id="cv-next-after-btn" onclick="cvNavigate(1)" style="font-size:.85rem;padding:8px 18px">Next Photo &#8594;</button>
+        <button class="contrib-cancel" onclick="closeContribForm()" style="color:var(--accent)">Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -234,7 +252,10 @@ function resizeToBlob(file, maxPx = 1200, quality = 0.85) {
 }
 
 // ── Contributor view ──────────────────────────────────────────
-let cvPhotos = {}, cvAllowDownloads = false, cvCurrentPhoto = null;
+let cvPhotos = {}, cvPhotoList = [], cvAllowDownloads = false;
+let cvCurrentPhoto = null, cvCurrentIndex = -1;
+let cvSubmitted = new Set();
+let cvContributorName = "", cvContributorEmail = "";
 
 async function startContributorView(token) {
   const { data: col, error } = await db().from("mk_collections")
@@ -265,12 +286,15 @@ function renderCvGallery(photos) {
     return;
   }
   cvPhotos = {};
+  cvPhotoList = photos;
   photos.forEach(p => { cvPhotos[p.id] = p; });
   const items = photos.map(p => {
     const meta = [p.people, p.approximate_date, p.location].filter(Boolean).join(" · ");
-    return `<div class="cv-photo" onclick="openContribForm('${esc(p.id)}')" title="${esc(p.file_name)}">
+    const done = cvSubmitted.has(p.id);
+    return `<div class="cv-photo${done?' done':''}" data-id="${esc(p.id)}" onclick="openContribForm('${esc(p.id)}')" title="${esc(p.file_name)}">
       <img src="${esc(p.preview_url)}" alt="${esc(p.file_name)}" loading="lazy" />
       ${meta ? `<div class="cv-photo-meta">${esc(meta)}</div>` : ""}
+      ${done ? `<span class="cv-done-badge">&#10003; Done</span>` : ""}
     </div>`;
   }).join("");
   document.getElementById("cv-content").innerHTML =
@@ -278,16 +302,50 @@ function renderCvGallery(photos) {
      <div class="cv-grid">${items}</div>`;
 }
 
+function markPhotoSubmitted(photoId) {
+  cvSubmitted.add(photoId);
+  const el = document.querySelector(`.cv-photo[data-id="${CSS.escape(photoId)}"]`);
+  if (el && !el.classList.contains("done")) {
+    el.classList.add("done");
+    const badge = document.createElement("span");
+    badge.className = "cv-done-badge";
+    badge.innerHTML = "&#10003; Done";
+    el.appendChild(badge);
+  }
+}
+
 function openContribForm(photoId) {
-  cvCurrentPhoto = cvPhotos[photoId];
-  if (!cvCurrentPhoto) return;
-  document.getElementById("contrib-img").src = cvCurrentPhoto.preview_url;
+  const idx = cvPhotoList.findIndex(p => p.id === photoId);
+  openContribFormByIndex(idx);
+}
+
+function cvNavigate(dir) {
+  const newIdx = cvCurrentIndex + dir;
+  if (newIdx >= 0 && newIdx < cvPhotoList.length) openContribFormByIndex(newIdx);
+}
+
+function openContribFormByIndex(idx) {
+  if (idx < 0 || idx >= cvPhotoList.length) return;
+  cvCurrentIndex  = idx;
+  cvCurrentPhoto  = cvPhotoList[idx];
+
+  document.getElementById("contrib-img").src              = cvCurrentPhoto.preview_url;
   document.getElementById("contrib-form-wrap").style.display = "";
   document.getElementById("contrib-success").style.display   = "none";
   document.getElementById("contrib-submit-btn").disabled     = false;
-  ["cf-name","cf-email","cf-note","cf-people","cf-date","cf-location","cf-tags"]
-    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
 
+  // Restore contributor identity across photos
+  document.getElementById("cf-name").value  = cvContributorName;
+  document.getElementById("cf-email").value = cvContributorEmail;
+
+  // Prefill known metadata, clear memory/story
+  document.getElementById("cf-note").value     = "";
+  document.getElementById("cf-people").value   = cvCurrentPhoto.people           || "";
+  document.getElementById("cf-date").value     = cvCurrentPhoto.approximate_date || "";
+  document.getElementById("cf-location").value = cvCurrentPhoto.location         || "";
+  document.getElementById("cf-tags").value     = cvCurrentPhoto.tags             || "";
+
+  // Known-meta panel
   const knownFields = [
     ["People",   cvCurrentPhoto.people],
     ["Date",     cvCurrentPhoto.approximate_date],
@@ -305,16 +363,19 @@ function openContribForm(photoId) {
     metaEl.style.display = "none";
   }
 
+  // Download button
   const dl = document.getElementById("contrib-dl-btn");
   if (dl) {
-    if (cvAllowDownloads) {
-      dl.href = cvCurrentPhoto.preview_url;
-      dl.download = cvCurrentPhoto.file_name;
-      dl.style.display = "";
-    } else {
-      dl.style.display = "none";
-    }
+    if (cvAllowDownloads) { dl.href = cvCurrentPhoto.preview_url; dl.download = cvCurrentPhoto.file_name; dl.style.display = ""; }
+    else dl.style.display = "none";
   }
+
+  // Nav buttons + counter
+  document.getElementById("cv-prev-btn").disabled = idx === 0;
+  document.getElementById("cv-next-btn").disabled = idx === cvPhotoList.length - 1;
+  document.getElementById("cv-next-after-btn").disabled = idx === cvPhotoList.length - 1;
+  document.getElementById("cv-counter").textContent = `Photo ${idx + 1} of ${cvPhotoList.length}`;
+
   document.getElementById("contrib-overlay").classList.add("open");
 }
 
@@ -329,23 +390,29 @@ async function submitContribution() {
   if (!name)  { document.getElementById("cf-name").focus();  return; }
   if (!email || !email.includes("@")) { document.getElementById("cf-email").focus(); return; }
   if (!cvCurrentPhoto) return;
+
+  // Remember for next photos
+  cvContributorName  = name;
+  cvContributorEmail = email;
+
   document.getElementById("contrib-submit-btn").disabled = true;
   const { error } = await db().from("mk_contributions").insert({
-    photo_id:          cvCurrentPhoto.id,
-    collection_id:     cvCurrentPhoto.collection_id,
-    contributor_name:  name,
-    contributor_email: email,
-    memory_note:       document.getElementById("cf-note")?.value.trim()     || "",
-    suggested_people:  document.getElementById("cf-people")?.value.trim()   || "",
-    suggested_date:    document.getElementById("cf-date")?.value.trim()     || "",
-    suggested_location:document.getElementById("cf-location")?.value.trim() || "",
-    suggested_tags:    document.getElementById("cf-tags")?.value.trim()     || "",
+    photo_id:           cvCurrentPhoto.id,
+    collection_id:      cvCurrentPhoto.collection_id,
+    contributor_name:   name,
+    contributor_email:  email,
+    memory_note:        document.getElementById("cf-note")?.value.trim()      || "",
+    suggested_people:   document.getElementById("cf-people")?.value.trim()    || "",
+    suggested_date:     document.getElementById("cf-date")?.value.trim()      || "",
+    suggested_location: document.getElementById("cf-location")?.value.trim()  || "",
+    suggested_tags:     document.getElementById("cf-tags")?.value.trim()      || "",
   });
   if (error) {
     alert("Failed to submit: " + error.message);
     document.getElementById("contrib-submit-btn").disabled = false;
     return;
   }
+  markPhotoSubmitted(cvCurrentPhoto.id);
   document.getElementById("contrib-form-wrap").style.display = "none";
   document.getElementById("contrib-success").style.display   = "block";
 }
@@ -427,9 +494,10 @@ else document.getElementById("cv-content").innerHTML =
   "<div class='cv-loading'>No share token found in this URL.</div>";
 
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && document.getElementById("contrib-overlay").classList.contains("open")) {
-    closeContribForm(); e.preventDefault();
-  }
+  if (!document.getElementById("contrib-overlay").classList.contains("open")) return;
+  if (e.key === "Escape")      { closeContribForm(); e.preventDefault(); }
+  if (e.key === "ArrowRight" && !e.target.matches("input,textarea")) { cvNavigate(1);  e.preventDefault(); }
+  if (e.key === "ArrowLeft"  && !e.target.matches("input,textarea")) { cvNavigate(-1); e.preventDefault(); }
 });
 </script>
 </body>
