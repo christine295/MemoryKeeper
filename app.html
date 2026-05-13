@@ -26,9 +26,9 @@
     .hdr-btn:hover { background:rgba(255,255,255,.22); }
 
     /* STATS BAR */
-    .stats-bar { background:var(--header-light); border-bottom:1px solid rgba(0,0,0,.15); }
-    .stats-inner { max-width:900px; margin:0 auto; display:flex; flex-wrap:wrap; }
-    .stat { display:flex; align-items:center; gap:8px; padding:8px 20px; border-right:1px solid rgba(255,255,255,.08); font-family:system-ui,sans-serif; font-size:.78rem; color:rgba(244,235,224,.7); cursor:pointer; transition:background .15s; user-select:none; }
+    .stats-bar { background:var(--header-light); border-bottom:1px solid rgba(0,0,0,.15); overflow-x:auto; }
+    .stats-inner { max-width:900px; margin:0 auto; display:flex; flex-wrap:nowrap; }
+    .stat { display:flex; align-items:center; gap:6px; padding:8px 14px; border-right:1px solid rgba(255,255,255,.08); font-family:system-ui,sans-serif; font-size:.78rem; color:rgba(244,235,224,.7); cursor:pointer; transition:background .15s; user-select:none; white-space:nowrap; }
     .stat:hover { background:rgba(255,255,255,.1); }
     .stat:last-child { border-right:none; }
     .stat-value { font-size:1.1rem; font-weight:700; color:#f4ebe0; }
