@@ -306,7 +306,7 @@
       <h1>MemoryKeeper</h1>
       <div class="tagline" id="hdr-tagline">Loading&hellip;</div>
     </div>
-    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.1</span>
+    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v2.2</span>
     <button class="hdr-btn" onclick="openHelp()">&#8505; Help</button>
     <button class="hdr-btn" id="btn-share"  style="display:none" onclick="openShareModal()">&#127760; Share</button>
     <button class="hdr-btn" id="btn-review" style="display:none" onclick="openReviewModal()">&#128228; Contributions</button>
@@ -428,7 +428,7 @@
   <main>
     <div id="main-content"></div>
   </main>
-  <div class="kb-hints">
+  <div class="kb-hints" id="kb-hints">
     <span><span class="kb-key">&#8592;/&#8594;</span> Skip</span>
     <span><span class="kb-key">S</span> Save &amp; Next</span>
     <span><span class="kb-key">F</span> Favorite</span>
@@ -1450,6 +1450,8 @@ window.setView = function(v) {
   state.view = v;
   document.getElementById('btn-view-single').classList.toggle('active',  v === 'single');
   document.getElementById('btn-view-gallery').classList.toggle('active', v === 'gallery');
+  const kb = document.getElementById('kb-hints');
+  if (kb) kb.style.display = v === 'gallery' ? 'none' : '';
   if (v === 'single') { selectedIds.clear(); updateBulkBar(); }
   render();
 };
