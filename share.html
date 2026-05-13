@@ -526,7 +526,7 @@ async function wlSubmit() {
     name, email, source_token: new URLSearchParams(location.search).get("share") || null
   });
   if (error) {
-    alert("Something went wrong — please try again.");
+    alert("Error: " + error.message);
     btn.disabled = false;
     return;
   }
