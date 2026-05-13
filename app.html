@@ -259,6 +259,21 @@
     .rv-save-btn { background:var(--accent); color:#fff; }
     .rv-dl-btn { background:var(--bg); color:var(--text-mid); border:1px solid var(--border) !important; text-decoration:none; display:inline-flex; align-items:center; }
 
+    /* DUPLICATE PAIR */
+    .dup-pair-wrap { max-width:860px; margin:0 auto; padding-bottom:24px; }
+    .dup-intro { font-family:system-ui,sans-serif; font-size:.85rem; color:var(--text-mid); text-align:center; margin-bottom:18px; }
+    .dup-pair { display:grid; grid-template-columns:1fr auto 1fr; gap:16px; align-items:start; }
+    .dup-side { display:flex; flex-direction:column; gap:8px; }
+    .dup-frame { width:100%; background:#1a100a; border-radius:var(--radius-sm); overflow:hidden; max-height:380px; display:flex; align-items:center; justify-content:center; }
+    .dup-frame img { max-width:100%; max-height:380px; object-fit:contain; display:block; }
+    .dup-filename { font-family:'Courier New',monospace; font-size:.73rem; color:var(--text-mid); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .dup-vs { display:flex; align-items:center; font-family:system-ui,sans-serif; font-size:.82rem; color:var(--text-light); align-self:center; }
+    .dup-side-actions { display:flex; gap:8px; justify-content:center; }
+    .dup-footer { display:flex; gap:12px; justify-content:center; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
+    .dup-hashing { text-align:center; padding:60px 32px; font-family:system-ui,sans-serif; color:var(--text-mid); }
+    .dup-hashing-bar { width:200px; height:4px; background:var(--border); border-radius:2px; margin:14px auto 0; overflow:hidden; }
+    .dup-hashing-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .15s; }
+
     @media (max-width:600px) {
       header h1 { font-size:1.1rem; }
       .meta-grid { grid-template-columns:1fr; }
@@ -266,6 +281,8 @@
       .btn { font-size:.78rem; padding:7px 11px; }
       .photo-frame { min-height:200px; }
       .picker-card, .onboard-card { padding:32px 20px; }
+      .dup-pair { grid-template-columns:1fr; }
+      .dup-vs { justify-content:center; }
     }
   </style>
 </head>
@@ -363,6 +380,9 @@
       <div class="stat" onclick="switchToMode('hidden')" title="Hidden">
         <span>&#9675; Hidden</span><span class="stat-value" id="stat-hidden">0</span>
       </div>
+      <div class="stat" id="stat-dup-wrap" onclick="switchToMode('duplicates')" title="Similar / duplicate photos" style="display:none">
+        <span>&#8771; Duplicates</span><span class="stat-value" id="stat-duplicates">0</span>
+      </div>
     </div>
   </div>
   <div class="controls-bar">
@@ -378,6 +398,7 @@
         <option value="by-holiday">By Holiday / Event</option>
         <option value="by-year">By Year / Date</option>
         <option value="all-reviewed">All Reviewed</option>
+        <option value="duplicates">&#8771; Duplicates</option>
       </select>
       <span id="filter-wrap" style="display:none; align-items:center; gap:8px;">
         <span class="ctrl-label" id="filter-label">Filter:</span>
@@ -474,6 +495,18 @@
         <li><strong>Tags</strong> — freeform keywords, comma-separated (e.g. <em>outdoor, funny, rare, swimming</em>).</li>
         <li><strong>Memory / story / note</strong> — a longer written memory or story about the photo.</li>
       </ul>
+
+      <h3>Finding Duplicates</h3>
+      <p>When you open a folder, MemoryKeeper automatically analyses every photo in the background using <strong>perceptual hashing</strong> — a technique that creates a compact fingerprint of each image's visual content. Photos with nearly identical fingerprints are flagged as duplicates.</p>
+      <p>Once the analysis is complete, a <strong>&#8771; Duplicates</strong> count appears in the stats bar at the top of the screen (only if duplicates were found). Click it to enter Duplicates mode, or select <strong>&#8771; Duplicates</strong> from the Mode dropdown.</p>
+      <p>Each duplicate pair is shown side by side. You can:</p>
+      <ul>
+        <li><strong>&#10003; Keep This</strong> — marks that photo as kept and hides the other one. The pair is resolved and removed from the list.</li>
+        <li><strong>&#9675; Hide This</strong> — hides just one photo without touching the other.</li>
+        <li><strong>Hide Both</strong> — hides both photos (useful for two blurry or unwanted versions of the same shot).</li>
+        <li><strong>&#8594; Skip Pair</strong> — moves to the next pair without taking any action.</li>
+      </ul>
+      <p>Click either photo to zoom it fullscreen before deciding. Pairs where one photo has already been hidden are automatically removed from the list. The duplicate check runs on visual similarity, not file names — so it will catch the same photo saved under different names, or photos that were re-compressed or slightly cropped.</p>
 
       <h3>Gallery View &amp; Bulk Actions</h3>
       <p>Click <strong>Gallery</strong> (or press <strong>G</strong>) to switch to a grid view of all photos in the current mode. In gallery view you can select multiple photos by clicking their checkboxes, then apply a bulk action — Favorite, Best Shot, Hide, or Mark Kept — to all of them at once. Click a photo to open it in single view.</p>
@@ -603,10 +636,16 @@ const SUPPORTS_FS   = typeof window.showDirectoryPicker === 'function';
 const META_FILENAME = 'mk-metadata.json';
 let metaStore = {};
 
+// ── DUPLICATE DETECTION STATE ────────────────────────────────
+let photoHashes    = {};
+let duplicatePairs = [];
+let hashingDone    = false;
+let hashingProgress = 0;
+
 // ── APP STATE ────────────────────────────────────────────────
 const state = {
   mode: 'random-unreviewed', filter: '', queue: [], queueIdx: 0,
-  currentId: null, view: 'single'
+  currentId: null, view: 'single', dupPairIdx: 0
 };
 let selectedIds = new Set();
 
@@ -795,6 +834,7 @@ function enterReviewMode() {
   document.getElementById('btn-view-gallery').classList.remove('active');
   state.queue = buildFreshQueue();
   render();
+  computeAllHashes();
 }
 
 window.doSignOut = async function() {
@@ -997,6 +1037,12 @@ function shuffle(arr) {
 function render() {
   updateStats();
   updateCounter();
+  if (state.mode === 'duplicates') {
+    document.getElementById('main-content').innerHTML = renderDuplicatePairs();
+    updateBulkBar();
+    updateSelectAllBtn();
+    return;
+  }
   const id = state.queue[state.queueIdx] ?? null;
   state.currentId = id;
   document.getElementById('main-content').innerHTML =
@@ -1023,11 +1069,24 @@ function updateStats() {
     const el = document.getElementById('stat-' + k);
     if (el) el.textContent = counts[k];
   });
+  const dupEl   = document.getElementById('stat-duplicates');
+  const dupWrap = document.getElementById('stat-dup-wrap');
+  if (dupEl && hashingDone) {
+    const n = getActiveDuplicatePairs().length;
+    dupEl.textContent = n;
+    if (dupWrap) dupWrap.style.display = n > 0 ? '' : 'none';
+  }
 }
 
 function updateCounter() {
   const el = document.getElementById('photo-counter');
-  if (el) el.textContent = state.queue.length
+  if (!el) return;
+  if (state.mode === 'duplicates') {
+    const pairs = getActiveDuplicatePairs();
+    el.textContent = pairs.length ? `Pair ${state.dupPairIdx + 1} of ${pairs.length}` : '';
+    return;
+  }
+  el.textContent = state.queue.length
     ? (state.view === 'gallery' ? state.queue.length + ' photos' : `${state.queueIdx + 1} / ${state.queue.length}`)
     : '';
 }
@@ -1041,6 +1100,12 @@ window.switchToMode = function(m) {
 window.onModeChange = function() {
   state.mode   = document.getElementById('mode-select').value;
   state.filter = '';
+  state.dupPairIdx = 0;
+  if (state.mode === 'duplicates') {
+    document.getElementById('filter-wrap').style.display = 'none';
+    render();
+    return;
+  }
   const needsFilter = ['by-person','by-tag','by-holiday','by-year'].includes(state.mode);
   const fw = document.getElementById('filter-wrap');
   if (needsFilter) {
@@ -1550,7 +1615,7 @@ window.openReviewModal = async function() {
   reviewContribsMap = {};
 
   const { data:cols } = await db().from('mk_collections')
-    .select('id').eq('archive_id', currentArchiveId);
+    .select('id, title').eq('archive_id', currentArchiveId);
 
   if (!cols?.length) {
     document.getElementById('review-body').innerHTML =
@@ -1559,6 +1624,8 @@ window.openReviewModal = async function() {
   }
 
   const colIds = cols.map(c => c.id);
+  const colTitles = Object.fromEntries(cols.map(c => [c.id, c.title]));
+
   const [{ data:contribs }, { data:uploads }] = await Promise.all([
     db().from('mk_contributions')
       .select('*, mk_photos(file_name,preview_url,people,approximate_date)')
@@ -1574,16 +1641,26 @@ window.openReviewModal = async function() {
     return;
   }
 
+  // Group by collection
+  const grouped = {};
+  colIds.forEach(id => { grouped[id] = { title: colTitles[id], contribs:[], uploads:[] }; });
+  (contribs||[]).forEach(c => { reviewContribsMap[c.id] = c; grouped[c.collection_id]?.contribs.push(c); });
+  (uploads||[]).forEach(u => { grouped[u.collection_id]?.uploads.push(u); });
+
   let html = '';
-  if (contribs?.length) {
-    html += `<div class="rv-section-hd">Memory Submissions (${contribs.length})</div>`;
-    contribs.forEach(c => { reviewContribsMap[c.id] = c; });
-    html += contribs.map(renderRvCard).join('');
-  }
-  if (uploads?.length) {
-    html += `<div class="rv-section-hd">Uploaded Photos (${uploads.length})</div>`;
-    html += uploads.map(renderUploadCard).join('');
-  }
+  colIds.forEach(colId => {
+    const g = grouped[colId];
+    if (!g.contribs.length && !g.uploads.length) return;
+    html += `<div class="rv-collection-hd">&#128193; ${esc(g.title)}</div>`;
+    if (g.contribs.length) {
+      html += `<div class="rv-section-hd">Memory Submissions (${g.contribs.length})</div>`;
+      html += g.contribs.map(renderRvCard).join('');
+    }
+    if (g.uploads.length) {
+      html += `<div class="rv-section-hd">Uploaded Photos (${g.uploads.length})</div>`;
+      html += g.uploads.map(renderUploadCard).join('');
+    }
+  });
   document.getElementById('review-body').innerHTML = html;
 };
 
@@ -1751,6 +1828,200 @@ document.addEventListener('keydown', e => {
       break;
   }
 });
+
+// ════════════════════════════════════════════════════════════
+//  PERCEPTUAL HASHING & DUPLICATE DETECTION
+// ════════════════════════════════════════════════════════════
+function computePHash(photo) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const SIZE = 8;
+        const canvas = document.createElement('canvas');
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, SIZE, SIZE);
+        const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
+        const grays = [];
+        for (let i = 0; i < SIZE * SIZE; i++) {
+          grays.push(0.299 * data[i*4] + 0.587 * data[i*4+1] + 0.114 * data[i*4+2]);
+        }
+        const avg = grays.reduce((a, b) => a + b, 0) / grays.length;
+        resolve(grays.map(v => v >= avg ? 1 : 0));
+      } catch(e) { reject(e); }
+    };
+    img.onerror = reject;
+    img.src = photo.filePath;
+  });
+}
+
+function hammingDistance(a, b) {
+  let d = 0;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+  return d;
+}
+
+function dupSimilarityLabel(dist) {
+  if (dist === 0) return 'Exact duplicate';
+  if (dist <= 5)  return 'Nearly identical';
+  return 'Very similar';
+}
+
+async function computeAllHashes() {
+  hashingDone     = false;
+  hashingProgress = 0;
+  photoHashes     = {};
+  duplicatePairs  = [];
+
+  const eligible = photoLibrary.filter(p => (metaStore[p.id]?.status ?? 'unreviewed') !== 'app_deleted');
+  const total = eligible.length;
+
+  for (let i = 0; i < total; i++) {
+    try {
+      photoHashes[eligible[i].id] = await computePHash(eligible[i]);
+    } catch { /* skip unreadable images */ }
+    hashingProgress = (i + 1) / total;
+    if (state.mode === 'duplicates') updateHashingBar();
+  }
+
+  const ids = Object.keys(photoHashes);
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const d = hammingDistance(photoHashes[ids[i]], photoHashes[ids[j]]);
+      if (d <= 10) duplicatePairs.push({ a: ids[i], b: ids[j], dist: d });
+    }
+  }
+  duplicatePairs.sort((a, b) => a.dist - b.dist);
+
+  hashingDone = true;
+  updateStats();
+  if (state.mode === 'duplicates') render();
+}
+
+function updateHashingBar() {
+  const fill = document.getElementById('dup-hashing-fill');
+  if (fill) fill.style.width = Math.round(hashingProgress * 100) + '%';
+}
+
+function getActiveDuplicatePairs() {
+  return duplicatePairs.filter(p => {
+    const ma = metaStore[p.a] || blankMeta(p.a);
+    const mb = metaStore[p.b] || blankMeta(p.b);
+    return ma.status !== 'app_deleted' && mb.status !== 'app_deleted'
+        && ma.status !== 'hidden'      && mb.status !== 'hidden';
+  });
+}
+
+function renderDuplicatePairs() {
+  if (!hashingDone) {
+    const pct = Math.round(hashingProgress * 100);
+    return `<div class="dup-hashing">
+      <div style="font-size:1.3rem;margin-bottom:8px">&#8771;</div>
+      <div style="font-family:system-ui,sans-serif;font-size:.9rem;color:var(--text-mid)">Analysing photos for duplicates&hellip; ${pct}%</div>
+      <div class="dup-hashing-bar"><div class="dup-hashing-fill" id="dup-hashing-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+
+  const pairs = getActiveDuplicatePairs();
+  if (!pairs.length) {
+    return `<div class="empty-state">
+      <div class="empty-icon">&#10003;</div>
+      <h2>No duplicates found</h2>
+      <p>All photos in this folder appear unique.</p>
+    </div>`;
+  }
+
+  if (state.dupPairIdx >= pairs.length) state.dupPairIdx = 0;
+  const pair  = pairs[state.dupPairIdx];
+  const pA    = photoLibrary.find(p => p.id === pair.a);
+  const pB    = photoLibrary.find(p => p.id === pair.b);
+  const mA    = readMeta(pair.a);
+  const mB    = readMeta(pair.b);
+  const label = dupSimilarityLabel(pair.dist);
+
+  return `<div class="dup-pair-wrap">
+    <div class="dup-intro">${esc(label)} &mdash; click a photo to zoom, then choose which to keep.</div>
+    <div class="dup-pair">
+      <div class="dup-side">
+        <div class="dup-frame">
+          <img src="${esc(pA.filePath)}" alt="${esc(pA.fileName)}"
+               onclick="openZoom('${esc(pA.filePath)}')" style="cursor:zoom-in" />
+        </div>
+        <div class="dup-filename">${esc(pA.fileName)}</div>
+        <div class="dup-side-actions">
+          <button class="btn btn-save"  onclick="dupKeep('a')">&#10003; Keep This</button>
+          <button class="btn btn-hide"  onclick="dupHide('a')">&#9675; Hide This</button>
+        </div>
+      </div>
+      <div class="dup-vs">vs</div>
+      <div class="dup-side">
+        <div class="dup-frame">
+          <img src="${esc(pB.filePath)}" alt="${esc(pB.fileName)}"
+               onclick="openZoom('${esc(pB.filePath)}')" style="cursor:zoom-in" />
+        </div>
+        <div class="dup-filename">${esc(pB.fileName)}</div>
+        <div class="dup-side-actions">
+          <button class="btn btn-save"  onclick="dupKeep('b')">&#10003; Keep This</button>
+          <button class="btn btn-hide"  onclick="dupHide('b')">&#9675; Hide This</button>
+        </div>
+      </div>
+    </div>
+    <div class="dup-footer">
+      <button class="btn btn-skip" onclick="dupSkip()">&#8594; Skip Pair</button>
+      <button class="btn btn-del"  onclick="dupHideBoth()">Hide Both</button>
+    </div>
+  </div>`;
+}
+
+window.dupKeep = function(side) {
+  const pairs  = getActiveDuplicatePairs();
+  const pair   = pairs[state.dupPairIdx];
+  if (!pair) return;
+  const keepId = side === 'a' ? pair.a : pair.b;
+  const hideId = side === 'a' ? pair.b : pair.a;
+  const keepEx = readMeta(keepId);
+  const hideEx = readMeta(hideId);
+  const now    = new Date().toISOString();
+  writeMeta(keepId, { ...keepEx, status: keepEx.status === 'unreviewed' ? 'kept' : keepEx.status, reviewedDate: keepEx.reviewedDate ?? now });
+  writeMeta(hideId, { ...hideEx, status: 'hidden', reviewedDate: hideEx.reviewedDate ?? now });
+  dupAdvance();
+};
+
+window.dupHide = function(side) {
+  const pairs  = getActiveDuplicatePairs();
+  const pair   = pairs[state.dupPairIdx];
+  if (!pair) return;
+  const hideId = side === 'a' ? pair.a : pair.b;
+  const hideEx = readMeta(hideId);
+  writeMeta(hideId, { ...hideEx, status: 'hidden', reviewedDate: hideEx.reviewedDate ?? new Date().toISOString() });
+  dupAdvance();
+};
+
+window.dupHideBoth = function() {
+  const pairs = getActiveDuplicatePairs();
+  const pair  = pairs[state.dupPairIdx];
+  if (!pair) return;
+  const now = new Date().toISOString();
+  const exA = readMeta(pair.a);
+  const exB = readMeta(pair.b);
+  writeMeta(pair.a, { ...exA, status: 'hidden', reviewedDate: exA.reviewedDate ?? now });
+  writeMeta(pair.b, { ...exB, status: 'hidden', reviewedDate: exB.reviewedDate ?? now });
+  dupAdvance();
+};
+
+window.dupSkip = function() {
+  const pairs = getActiveDuplicatePairs();
+  if (!pairs.length) return;
+  state.dupPairIdx = (state.dupPairIdx + 1) % pairs.length;
+  render();
+};
+
+function dupAdvance() {
+  const pairs = getActiveDuplicatePairs();
+  if (state.dupPairIdx >= pairs.length) state.dupPairIdx = Math.max(0, pairs.length - 1);
+  render();
+}
 
 init();
 </script>
