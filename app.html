@@ -168,13 +168,16 @@
     .empty-state p { font-family:system-ui,sans-serif; font-size:.86rem; color:var(--text-light); line-height:1.7; }
 
     /* BULK BAR */
-    #bulk-bar { display:none; position:sticky; bottom:0; background:var(--header); border-top:2px solid var(--accent); z-index:20; padding:10px 20px; }
+    #bulk-bar { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--header); border-top:2px solid var(--accent); z-index:20; padding:10px 20px; }
     .bulk-inner { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .bulk-count { font-family:system-ui,sans-serif; font-size:.85rem; font-weight:700; color:#f4ebe0; white-space:nowrap; }
     .bulk-btn { font-family:system-ui,sans-serif; font-size:.8rem; font-weight:600; padding:6px 14px; border:1px solid rgba(255,255,255,.25); border-radius:var(--radius-sm); background:rgba(255,255,255,.12); color:#f4ebe0; cursor:pointer; white-space:nowrap; transition:background .12s; }
     .bulk-btn:hover { background:rgba(255,255,255,.22); }
     .bulk-clear { margin-left:auto; border-color:transparent; opacity:.65; }
     .bulk-clear:hover { opacity:1; background:rgba(255,255,255,.1); }
+    .bulk-field-inp { font-family:system-ui,sans-serif; font-size:.8rem; padding:5px 10px; border:1px solid rgba(255,255,255,.35); border-radius:var(--radius-sm); background:rgba(255,255,255,.12); color:#f4ebe0; outline:none; width:140px; }
+    .bulk-field-inp::placeholder { color:rgba(244,235,224,.4); }
+    .bulk-field-inp:focus { border-color:rgba(255,255,255,.6); background:rgba(255,255,255,.18); }
 
     /* KB HINTS */
     .kb-hints { display:flex; flex-wrap:wrap; justify-content:center; gap:16px; padding:6px 20px; font-family:system-ui,sans-serif; font-size:.67rem; color:var(--text-light); background:#fdf9f6; border-top:1px solid var(--border); user-select:none; }
@@ -436,6 +439,16 @@
       <button class="bulk-btn" onclick="bulkAction('bestshot')">&#9670; Best Shot</button>
       <button class="bulk-btn" onclick="bulkAction('hide')">&#9675; Hide</button>
       <button class="bulk-btn" onclick="bulkAction('review')">&#10003; Mark Kept</button>
+      <select class="bulk-btn" id="bulk-field-sel" onchange="bulkFieldSelChange()" style="appearance:auto;padding-right:6px;">
+        <option value="">&#43; Add field to all&hellip;</option>
+        <option value="people">Person / People</option>
+        <option value="tags">Tag</option>
+        <option value="holidayEvent">Event</option>
+        <option value="location">Location</option>
+      </select>
+      <input type="text" class="bulk-field-inp" id="bulk-field-val" placeholder="Value&hellip;" style="display:none"
+             onkeydown="if(event.key==='Enter')bulkSetField()" />
+      <button class="bulk-btn" id="bulk-field-apply" onclick="bulkSetField()" style="display:none">Apply</button>
       <button class="bulk-btn" id="bulk-share-btn" onclick="openShareModalForSelected()">&#127760; Share Selected</button>
       <button class="bulk-btn bulk-clear" onclick="clearSelection()">&#10005; Clear</button>
     </div>
@@ -1226,13 +1239,17 @@ function renderCard(id) {
     <button class="btn btn-save" onclick="doSaveAndNext()">Save &amp; Next</button>
     <span class="saved-flash" id="saved-flash">&#10003; Saved</span>
   </div>
-  ${dirHandle ? `
+  ${SUPPORTS_FS ? (dirHandle ? `
   <div class="move-row">
     <span style="font-family:system-ui,sans-serif;font-size:.78rem;color:var(--text-mid);white-space:nowrap;">Move to subfolder:</span>
     <input type="text" class="ctrl-input" id="f-move-to" placeholder="Subfolder name" style="flex:1"
            onkeydown="if(event.key==='Enter')doMoveToSubfolder()" />
     <button class="btn btn-move" onclick="doMoveToSubfolder()">&#8594; Move</button>
-  </div>` : ''}
+  </div>` : `
+  <div class="move-row">
+    <span style="font-family:system-ui,sans-serif;font-size:.78rem;color:var(--text-mid);white-space:nowrap;">Move to subfolder:</span>
+    <button class="btn btn-move" onclick="regrantFolderAccess()">&#128193; Grant folder access to enable</button>
+  </div>`) : ''}
 </div>`;
 }
 
@@ -1272,6 +1289,53 @@ window.clearSelection = function() {
   selectedIds.clear();
   document.querySelectorAll('.gallery-item.selected').forEach(el => el.classList.remove('selected'));
   updateBulkBar();
+};
+
+window.bulkFieldSelChange = function() {
+  const sel  = document.getElementById('bulk-field-sel').value;
+  const inp  = document.getElementById('bulk-field-val');
+  const btn  = document.getElementById('bulk-field-apply');
+  inp.style.display = sel ? '' : 'none';
+  btn.style.display = sel ? '' : 'none';
+  if (sel) inp.focus();
+};
+
+window.bulkSetField = function() {
+  const field = document.getElementById('bulk-field-sel')?.value;
+  const value = document.getElementById('bulk-field-val')?.value.trim();
+  if (!field || !value || !selectedIds.size) return;
+  selectedIds.forEach(id => {
+    const existing = readMeta(id);
+    let newVal;
+    if (field === 'people' || field === 'tags') {
+      newVal = existing[field] ? existing[field] + ', ' + value : value;
+    } else {
+      newVal = value;
+    }
+    metaStore[id] = { ...existing, [field]: newVal };
+  });
+  persistMeta();
+  document.getElementById('bulk-field-sel').value = '';
+  document.getElementById('bulk-field-val').value = '';
+  document.getElementById('bulk-field-val').style.display = 'none';
+  document.getElementById('bulk-field-apply').style.display = 'none';
+  const countEl = document.getElementById('bulk-count');
+  const label = { people:'Person', tags:'Tag', holidayEvent:'Event', location:'Location' }[field] || field;
+  const n = selectedIds.size;
+  countEl.textContent = `✓ ${label} applied to ${n} photo${n!==1?'s':''}`;
+  setTimeout(() => { countEl.textContent = n + ' selected'; }, 2500);
+};
+
+window.regrantFolderAccess = async function() {
+  if (!SUPPORTS_FS) return;
+  try {
+    const handle = await window.showDirectoryPicker({ mode:'readwrite' });
+    dirHandle = handle;
+    await addToRecentFolders(handle);
+    render();
+  } catch(e) {
+    if (e.name !== 'AbortError') alert('Could not get folder access: ' + e.message);
+  }
 };
 
 function updateBulkBar() {
