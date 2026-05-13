@@ -1239,17 +1239,18 @@ function renderCard(id) {
     <button class="btn btn-save" onclick="doSaveAndNext()">Save &amp; Next</button>
     <span class="saved-flash" id="saved-flash">&#10003; Saved</span>
   </div>
-  ${SUPPORTS_FS ? (dirHandle ? `
+  ${dirHandle ? `
   <div class="move-row">
     <span style="font-family:system-ui,sans-serif;font-size:.78rem;color:var(--text-mid);white-space:nowrap;">Move to subfolder:</span>
     <input type="text" class="ctrl-input" id="f-move-to" placeholder="Subfolder name" style="flex:1"
            onkeydown="if(event.key==='Enter')doMoveToSubfolder()" />
     <button class="btn btn-move" onclick="doMoveToSubfolder()">&#8594; Move</button>
-  </div>` : `
+  </div>` : ''}
+  ${SUPPORTS_FS && !dirHandle ? `
   <div class="move-row">
     <span style="font-family:system-ui,sans-serif;font-size:.78rem;color:var(--text-mid);white-space:nowrap;">Move to subfolder:</span>
     <button class="btn btn-move" onclick="regrantFolderAccess()">&#128193; Grant folder access to enable</button>
-  </div>`) : ''}
+  </div>` : ''}
 </div>`;
 }
 
