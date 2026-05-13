@@ -1277,7 +1277,7 @@ window.clearSelection = function() {
 function updateBulkBar() {
   const n   = selectedIds.size;
   const bar = document.getElementById('bulk-bar');
-  bar.style.display = n > 0 && state.view === 'gallery' ? '' : 'none';
+  bar.style.display = n > 0 && state.view === 'gallery' ? 'flex' : 'none';
   document.getElementById('bulk-count').textContent = n + ' selected';
   document.getElementById('btn-select-all').style.display = state.view === 'gallery' ? '' : 'none';
 }
