@@ -300,7 +300,7 @@
       <h1>MemoryKeeper</h1>
       <div class="tagline" id="hdr-tagline">Loading&hellip;</div>
     </div>
-    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v1.8</span>
+    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v1.9</span>
     <button class="hdr-btn" onclick="openHelp()">&#8505; Help</button>
     <button class="hdr-btn" id="btn-share"  style="display:none" onclick="openShareModal()">&#127760; Share</button>
     <button class="hdr-btn" id="btn-review" style="display:none" onclick="openReviewModal()">&#128228; Contributions</button>
@@ -310,6 +310,8 @@
     <button class="hdr-btn" onclick="doSignOut()">&#8594; Sign Out</button>
   </div>
 </header>
+
+<div id="dbg-banner" style="display:none;position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#c00;color:#fff;padding:8px 20px;border-radius:6px;font-family:system-ui,sans-serif;font-size:.85rem;z-index:9999;pointer-events:none;white-space:nowrap;"></div>
 
 <!-- DASHBOARD SCREEN -->
 <div id="screen-dashboard" style="display:none">
@@ -1351,6 +1353,8 @@ function updateBadge() {
 
 window.doSaveAndNext = function() {
   const id = state.currentId;
+  const dbg = document.getElementById('dbg-banner');
+  if (dbg) { dbg.textContent = 'doSaveAndNext called — id: ' + (id || 'NULL'); dbg.style.display = 'block'; setTimeout(() => dbg.style.display = 'none', 4000); }
   if (!id) return;
   const existing = readMeta(id);
   writeMeta(id, { ...collectFields(), status:existing.status==='unreviewed'?'kept':existing.status,
