@@ -1354,14 +1354,24 @@ function updateBadge() {
 window.doSaveAndNext = function() {
   const id = state.currentId;
   const dbg = document.getElementById('dbg-banner');
-  if (dbg) { dbg.textContent = 'doSaveAndNext called — id: ' + (id || 'NULL'); dbg.style.display = 'block'; setTimeout(() => dbg.style.display = 'none', 4000); }
+  const show = msg => { if (dbg) { dbg.textContent = msg; dbg.style.display = 'block'; setTimeout(() => dbg.style.display = 'none', 5000); } };
+  show('step1: id=' + (id || 'NULL'));
   if (!id) return;
-  const existing = readMeta(id);
-  writeMeta(id, { ...collectFields(), status:existing.status==='unreviewed'?'kept':existing.status,
-                  favorite:existing.favorite, reviewedDate:existing.reviewedDate ?? new Date().toISOString() });
-  const flash = document.getElementById('saved-flash');
-  if (flash) { flash.classList.add('show'); setTimeout(() => flash.classList.remove('show'), 1600); }
-  advance();
+  try {
+    const existing = readMeta(id);
+    show('step2: readMeta ok, status=' + existing.status);
+    const fields = collectFields();
+    show('step3: collectFields ok');
+    writeMeta(id, { ...fields, status:existing.status==='unreviewed'?'kept':existing.status,
+                    favorite:existing.favorite, reviewedDate:existing.reviewedDate ?? new Date().toISOString() });
+    show('step4: writeMeta ok');
+    const flash = document.getElementById('saved-flash');
+    if (flash) { flash.classList.add('show'); setTimeout(() => flash.classList.remove('show'), 1600); }
+    advance();
+    show('step5: advance ok');
+  } catch(e) {
+    show('ERROR: ' + e.message);
+  }
 };
 
 function advance() {
