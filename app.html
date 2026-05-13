@@ -168,7 +168,7 @@
     .empty-state p { font-family:system-ui,sans-serif; font-size:.86rem; color:var(--text-light); line-height:1.7; }
 
     /* BULK BAR */
-    #bulk-bar { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--header); border-top:2px solid var(--accent); z-index:20; padding:10px 20px; }
+    #bulk-bar { display:none; position:sticky; bottom:0; background:var(--header); border-top:2px solid var(--accent); z-index:20; padding:10px 20px; }
     .bulk-inner { max-width:900px; margin:0 auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .bulk-count { font-family:system-ui,sans-serif; font-size:.85rem; font-weight:700; color:#f4ebe0; white-space:nowrap; }
     .bulk-btn { font-family:system-ui,sans-serif; font-size:.8rem; font-weight:600; padding:6px 14px; border:1px solid rgba(255,255,255,.25); border-radius:var(--radius-sm); background:rgba(255,255,255,.12); color:#f4ebe0; cursor:pointer; white-space:nowrap; transition:background .12s; }
@@ -300,6 +300,7 @@
       <h1>MemoryKeeper</h1>
       <div class="tagline" id="hdr-tagline">Loading&hellip;</div>
     </div>
+    <span style="font-family:system-ui,sans-serif;font-size:.68rem;opacity:.45;white-space:nowrap;">v1.8</span>
     <button class="hdr-btn" onclick="openHelp()">&#8505; Help</button>
     <button class="hdr-btn" id="btn-share"  style="display:none" onclick="openShareModal()">&#127760; Share</button>
     <button class="hdr-btn" id="btn-review" style="display:none" onclick="openReviewModal()">&#128228; Contributions</button>
